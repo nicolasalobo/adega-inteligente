@@ -133,9 +133,8 @@ Proprietário compartilha QR Code ou URL secreta e revogável → visitante sem 
 
 ## 8. Arquitetura proposta
 - **Web/PWA:** Next.js + TypeScript, mobile-first, câmera via navegador, instalável no iPhone.
-- **Backend:** rotas server-side em Next.js para MVP; jobs para preços separados do tráfego do usuário.
-- **Banco:** PostgreSQL + Prisma (ou ORM equivalente), transações/constraints para posições.
-- **Auth:** solução consolidada de autenticação com sessões seguras e RBAC no servidor.
+- **Banco e Auth da Fase 1:** Supabase Postgres + Supabase Auth, com RLS por proprietário; migrations SQL versionadas e constraints/transações para posições. A interface usa apenas a chave publicável; nunca expor `service_role`/`sb_secret` no navegador.
+- **Backend:** rotas server-side em Next.js quando uma operação precisar de privilégios; jobs de preços separados do tráfego do usuário. O cadastro manual em lote usa função Postgres invoker e continua sujeito a RLS.
 - **Fotos:** armazenamento privado de objetos; URLs assinadas quando necessário; limitar tamanho/tipo.
 - **Hospedagem:** serviço com HTTPS, tarefas agendadas e banco gerenciado.
 - **Segurança e LGPD:** dados de conta privados; QR com token não adivinhável, revogável e não indexado; rate limit na busca/scan, não expor segredos no front; logs sem imagens sensíveis desnecessárias; política clara de envio de fotos a terceiros.
@@ -172,7 +171,7 @@ Proprietário compartilha QR Code ou URL secreta e revogável → visitante sem 
 - Definir, com usuários reais, o que caracteriza *adega pequena* e se essa classificação será por capacidade ou escolha explícita.
 - Verificar fonte contratável/licença para preços brasileiros por safra. Cobertura não garantida.
 - Negociar condições comerciais, retenção/caching e uso de dados dos provedores de catálogo.
-- Escolher provedor de login, armazenamento e job depois dos primeiros testes.
+- Confirmar hospedagem, armazenamento privado de fotos e jobs agendados antes dessas fases; o benchmark de reconhecimento continua adiado.
 - Avaliar se compartilhamento de gerentes/familiares entra no beta inicial ou na entrega seguinte.
 
 ## 13. Documentação de referência verificada em 13/11/2026

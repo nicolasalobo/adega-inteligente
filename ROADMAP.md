@@ -1,10 +1,11 @@
 # Roadmap de desenvolvimento — Adega pessoal
 
-**Versão:** 1.0 | **Status:** planejamento | **Data:** 13/11/2026
+**Versão:** 1.1 | **Status:** execução da Fase 1 | **Data:** 13/11/2026
 
 > As fases são sequenciais, mas sem promessa de prazo. Avançar por critérios de aceite; não adicionar funcionalidades paralelas antes de validar o núcleo.
 
-## Fase 0 — Prova de conceito de reconhecimento (AGORA)
+## Fase 0 — Prova de conceito de reconhecimento (ADIADA)
+**Status:** adiada por decisão do projeto. Não bloqueia a base manual da Fase 1. Retomar após a Fase 1 e antes de implementar o reconhecimento por foto na Fase 2.
 **Meta:** descobrir se o pipeline encontra vinhos reais e safras com precisão e custo aceitáveis.
 
 - [ ] Criar credencial gratuita WineAPI (busca textual; somente uso pessoal no plano Free).
@@ -18,6 +19,7 @@
 **Saída:** relatório de benchmark + decisão documentada sobre API(s) + custo estimado por 100/1.000 scans.
 
 ## Fase 1 — Base do projeto e adega visual mínima
+**Status:** em implementação. O cadastro é manual e não depende da Fase 0.
 - [ ] Criar projeto Next.js + TS + banco relacional e autenticação.
 - [ ] Criar uma adega por proprietário no MVP.
 - [ ] Criar prateleiras com linhas e colunas; grid visual navegável.
@@ -28,6 +30,7 @@
 **Saída:** app funcional sem IA que já encontra cada garrafa na posição física.
 
 ## Fase 2 — Cadastro inteligente por foto e busca
+**Dependências:** Fase 1 concluída; retomar a Fase 0 antes de ativar reconhecimento por foto ou escolher provedores. O fluxo manual segue disponível.
 - [ ] Implementar upload seguro de foto e adaptadores de fornecedor.
 - [ ] Extrair informações visíveis (com desconhecidos explícitos).
 - [ ] Consultar catálogo, ranquear candidatos e separar safra do nome.
@@ -64,7 +67,7 @@
 - [ ] Só depois avaliar múltiplas adegas, transferências, recomendações e monetização.
 
 ## Ordem obrigatória de execução
-**Prova de conceito → Adega visual → Cadastro por foto → Histórico/preços → QR/família → Beta.**
+**Adega visual e cadastro manual → prova de conceito de reconhecimento → cadastro por foto → histórico/preços → QR/família → beta.**
 
 ## Critérios de bloqueio (não avançar sem resolver)
 - Identificação de rótulos ambíguos não pode selecionar marca/safra erradas silenciosamente.

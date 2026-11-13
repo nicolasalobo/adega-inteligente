@@ -10,9 +10,9 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Plano de execução
 
-O trabalho começa pela **Fase 0 — Prova de conceito de reconhecimento**. O resultado do benchmark orientará a escolha de provedores antes da implementação do cadastro por foto. A aplicação deve continuar permitindo cadastro manual sem depender de serviços externos.
+O trabalho começa pela **Fase 1 — Base do projeto e adega visual mínima**, com cadastro manual e sem depender de serviços externos. A prova de conceito de reconhecimento (Fase 0) está adiada; será retomada depois da base manual e antes de implementar o cadastro por foto.
 
-Ordem prevista: prova de conceito → adega visual → cadastro por foto → histórico e preços → QR e família → hardening e expansão.
+Ordem atual: adega visual e cadastro manual → prova de conceito de reconhecimento → cadastro por foto → histórico e preços → QR e família → hardening e expansão.
 
 ## Princípios do MVP
 
@@ -24,4 +24,14 @@ Ordem prevista: prova de conceito → adega visual → cadastro por foto → his
 
 ## Desenvolvimento
 
-A arquitetura proposta no PRD usa Next.js com TypeScript e banco relacional. As decisões de provedores externos serão tomadas após o benchmark da Fase 0.
+A arquitetura proposta no PRD usa Next.js com TypeScript e banco relacional. A escolha de provedores externos fica para quando a Fase 0 for retomada.
+
+### Rodar a interface
+
+```powershell
+cd web
+npm ci
+npm run dev
+```
+
+Sem variáveis de Supabase, a aplicação abre uma demonstração local e salva as alterações neste navegador. Para usar login e persistência no Postgres local, consulte [web/README.md](web/README.md).
