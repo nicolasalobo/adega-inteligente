@@ -11,20 +11,18 @@ Sem configurar Supabase, a aplicação abre uma demonstração com vinhos de exe
 
 ## Banco e autenticação locais
 
-O projeto inclui migrations do Supabase. Para iniciar a stack local, é necessário ter Docker Desktop instalado e em execução:
+O projeto inclui migrations do Supabase e uma seed local com um usuário de desenvolvimento, sete rótulos e 26 garrafas. Instale e abra Docker Desktop antes destes comandos:
 
 ```powershell
-npx supabase start
-npx supabase db reset
-npx supabase status
+npm run db:start
+npm run db:seed
+npm run dev
 ```
 
-Copie a URL local da API e a chave publicável local para `web/.env.local`, usando `web/.env.example` como modelo, e reinicie `npm run dev`. A chave publicável pode estar no navegador; não coloque chaves `service_role` ou `sb_secret` neste arquivo.
+`db:seed` cria `.env.local` com a URL e a chave publicável locais, cria a conta de desenvolvimento e exibe o e-mail e a senha no terminal. A chave secreta só é usada pelo script e não é gravada em arquivo.
 
-A aplicação cria uma adega inicial para uma conta autenticada. O cadastro em lote usa uma função transacional; o Postgres valida dimensões, compatibilidade de prateleira e ocupação exclusiva. As tabelas têm RLS por proprietário.
+Essas credenciais são exclusivas do Supabase local; não as use em um projeto hospedado.
 
-## Rodar em outro computador
+Cada computador tem seu próprio banco local; os dados não sincronizam entre máquinas. Para limpar e reconstruir o banco, execute `npm run db:reset` e depois `npm run db:seed`; o reset apaga os dados desse banco local.
 
-Depois de clonar o repositório, entre nesta pasta (`web`) e execute `npm ci` e `npm run dev`. Sem Supabase configurado, a demonstração local funciona sem Docker; os dados ficam apenas no navegador desse computador.
-
-Para rodar também o banco Supabase local, instale e abra Docker Desktop e execute `npx supabase start`, `npx supabase db reset` e `npx supabase status`. Copie a URL local e a chave publicável exibidas pelo último comando para `.env.local`, conforme `.env.example`, e reinicie o app. O banco local de cada computador é independente.
+O cadastro em lote usa uma função transacional; o Postgres valida dimensões, compatibilidade da prateleira e ocupação exclusiva. As tabelas têm RLS por proprietário.

@@ -35,3 +35,18 @@ npm run dev
 ```
 
 Sem variáveis de Supabase, a aplicação abre uma demonstração local e salva as alterações neste navegador. Para usar login e persistência no Postgres local, consulte [web/README.md](web/README.md).
+
+### Rodar no notebook com banco de desenvolvimento
+
+Clone a branch atual e prepare o ambiente local:
+
+```powershell
+git clone --branch codex/phase-1-base https://github.com/nicolasalobo/adega-inteligente.git
+cd adega-inteligente\web
+npm ci
+npm run db:start
+npm run db:seed
+npm run dev
+```
+
+É necessário instalar e abrir Docker Desktop antes de `npm run db:start`. O banco e a seed ficam no notebook e não sincronizam com este PC.
