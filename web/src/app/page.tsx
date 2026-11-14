@@ -32,8 +32,8 @@ import {
   type Wine as WineRecord,
   type WineCriterion,
 } from "@/lib/cellar";
-import { fetchCellarInventory, shelfFromDatabase } from "@/lib/supabase/cellar-data";
-import { createSupabaseBrowserClient, hasSupabaseConfig } from "@/lib/supabase/client";
+import { fetchCellarInventory, shelfFromDatabase } from "@/lib/neon/cellar-data";
+import { createNeonBrowserClient, hasNeonConfig } from "@/lib/neon/client";
 
 type View = "map" | "wines";
 type DataMode = "checking" | "signed-out" | "local" | "remote" | "error";
@@ -103,8 +103,8 @@ function readStoredCellar(): CellarState | null {
 export default function Home() {
   const [cellar, setCellar] = useState<CellarState>(() => createExampleCellar());
   const [hydrated, setHydrated] = useState(false);
-  const [dataMode, setDataMode] = useState<DataMode>(hasSupabaseConfig ? "checking" : "local");
-  const [supabaseClient, setSupabaseClient] = useState<ReturnType<typeof createSupabaseBrowserClient> | null>(null);
+  const [dataMode, setDataMode] = useState<DataMode>(hasNeonConfig ? "checking" : "local");
+  const [neonClient, setNeonClient] = useState<ReturnType<typeof createNeonBrowserClient> | null>(null);
   const [remoteCellarId, setRemoteCellarId] = useState<string | null>(null);
   const [remoteEmail, setRemoteEmail] = useState("");
   const [connectionError, setConnectionError] = useState("");
@@ -119,7 +119,7 @@ export default function Home() {
   const searchInput = useRef<HTMLInputElement>(null);
 
   const loadRemoteCellar = useCallback(async (
-    client: ReturnType<typeof createSupabaseBrowserClient>,
+    client: ReturnType<typeof createNeonBrowserClient>,
     user: { id: string; email?: string | null },
   ) => {
     setDataMode("checking");
@@ -168,9 +168,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (hasSupabaseConfig) {
-      const client = createSupabaseBrowserClient();
-      setSupabaseClient(client);
+    if (hasNeonConfig) {
+      const client = createNeonBrowserClient();
+      setNeonClient(client);
       void client.auth.getUser().then(({ data, error }) => {
         if (error) {
           setConnectionError(error.message);
@@ -185,7 +185,7 @@ export default function Home() {
         }
         void loadRemoteCellar(client, data.user);
       }).catch((error: unknown) => {
-        setConnectionError(error instanceof Error ? error.message : "Não foi possível conectar ao Supabase.");
+        setConnectionError(error instanceof Error ? error.message : "Não foi possível conectar ao Neon.");
         setDataMode("error");
         setHydrated(true);
       });
@@ -247,8 +247,8 @@ export default function Home() {
 
   async function addBottle(draft: WineDraft, shelf: Shelf, positions: PositionDraft[]) {
     if (dataMode === "remote") {
-      if (!supabaseClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { error } = await supabaseClient.rpc("register_wine_bottles", {
+      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { error } = await neonClient.rpc("register_wine_bottles", {
         p_cellar_id: remoteCellarId,
         p_shelf_id: shelf.id,
         p_wine: {
@@ -269,7 +269,7 @@ export default function Home() {
         throw new Error(error.message || "Não foi possível salvar as garrafas.");
       }
 
-      const inventory = await fetchCellarInventory(supabaseClient, remoteCellarId);
+      const inventory = await fetchCellarInventory(neonClient, remoteCellarId);
       setCellar(inventory);
       setActiveShelfId(shelf.id);
       setSelectedPosition(positions[0]?.key ?? null);
@@ -313,8 +313,8 @@ export default function Home() {
   async function addShelf(shelf: Omit<Shelf, "id">) {
     let newShelf: Shelf;
     if (dataMode === "remote") {
-      if (!supabaseClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { data, error } = await supabaseClient.from("shelves").insert({
+      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { data, error } = await neonClient.from("shelves").insert({
         cellar_id: remoteCellarId,
         name: shelf.name,
         row_count: shelf.rows,
@@ -348,9 +348,9 @@ export default function Home() {
   }
 
   async function signOut() {
-    if (!supabaseClient) return;
+    if (!neonClient) return;
     try {
-      const { error } = await supabaseClient.auth.signOut();
+      const { error } = await neonClient.auth.signOut();
       if (error) throw error;
     } catch {
       setToast("Não foi possível sair da conta. Tente novamente.");
@@ -383,8 +383,8 @@ export default function Home() {
     .sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
 
   if (dataMode === "checking" || (dataMode === "local" && !hydrated)) return <ConnectionStateScreen title="Abrindo sua adega" message="Estamos carregando suas prateleiras." />;
-  if (dataMode === "signed-out" && supabaseClient) {
-    return <AuthScreen client={supabaseClient} onAuthenticated={(user) => loadRemoteCellar(supabaseClient, user)} />;
+  if (dataMode === "signed-out" && neonClient) {
+    return <AuthScreen client={neonClient} onAuthenticated={(user) => loadRemoteCellar(neonClient, user)} />;
   }
   if (dataMode === "error") return <ConnectionErrorScreen message={connectionError} onOpenDemo={openLocalDemo} />;
   if (!activeShelf) return null;
@@ -823,7 +823,7 @@ function AuthScreen({
   client,
   onAuthenticated,
 }: {
-  client: ReturnType<typeof createSupabaseBrowserClient>;
+  client: ReturnType<typeof createNeonBrowserClient>;
   onAuthenticated: (user: { id: string; email?: string | null }) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
@@ -851,7 +851,10 @@ function AuthScreen({
       const { data, error: authError } = await client.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: {
+          data: { name: email.trim().split("@")[0] },
+          emailRedirectTo: window.location.origin,
+        },
       });
       if (authError) throw authError;
       if (data.session && data.user) {
@@ -895,5 +898,5 @@ function ConnectionStateScreen({ title, message }: { title: string; message: str
 }
 
 function ConnectionErrorScreen({ message, onOpenDemo }: { message: string; onOpenDemo: () => void }) {
-  return <main className="connection-screen"><div className="connection-card error-card"><span className="brand-mark"><Wine size={21} /></span><div className="connection-warning">!</div><h1>Não conseguimos abrir sua adega.</h1><p>Confira a conexão com Supabase e se o banco está configurado.</p><details><summary>Detalhes</summary><code>{message}</code></details><button className="primary-button" onClick={onOpenDemo}>Abrir demonstração local</button></div></main>;
+  return <main className="connection-screen"><div className="connection-card error-card"><span className="brand-mark"><Wine size={21} /></span><div className="connection-warning">!</div><h1>Não conseguimos abrir sua adega.</h1><p>Confira a conexão com Neon e se o banco está configurado.</p><details><summary>Detalhes</summary><code>{message}</code></details><button className="primary-button" onClick={onOpenDemo}>Abrir demonstração local</button></div></main>;
 }

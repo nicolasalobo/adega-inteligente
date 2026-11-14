@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Bottle, CellarState, Shelf, Wine } from "@/lib/cellar";
+import type { NeonBrowserClient } from "@/lib/neon/client";
 
 type ShelfRow = {
   id: string;
@@ -44,7 +44,7 @@ export function shelfFromDatabase(row: ShelfRow): Shelf {
   };
 }
 
-export async function fetchCellarInventory(client: SupabaseClient, cellarId: string): Promise<CellarState> {
+export async function fetchCellarInventory(client: NeonBrowserClient, cellarId: string): Promise<CellarState> {
   const [shelfResult, wineResult, bottleResult] = await Promise.all([
     client.from("shelves").select("*").eq("cellar_id", cellarId).order("created_at"),
     client.from("wines").select("*").eq("cellar_id", cellarId).order("created_at", { ascending: false }),

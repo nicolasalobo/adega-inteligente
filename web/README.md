@@ -1,28 +1,33 @@
 # Aplicação web
 
-## Desenvolvimento local
+## Desenvolvimento
 
 ```powershell
 npm ci
+Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Sem configurar Supabase, a aplicação abre uma demonstração com vinhos de exemplo. Cadastros são gravados no `localStorage` deste navegador e não são sincronizados com outros dispositivos.
+O `.env.example` já aponta para o banco compartilhado do projeto. Use a mesma conta em qualquer computador para ver a mesma adega. Sem `NEXT_PUBLIC_NEON_DATABASE_URL`, a aplicação abre uma demonstração salva apenas neste navegador.
 
-## Banco e autenticação locais
+## Banco e autenticação
 
-O projeto inclui migrations do Supabase e uma seed local com um usuário de desenvolvimento, sete rótulos e 26 garrafas. Instale e abra Docker Desktop antes destes comandos:
+O projeto usa Neon Postgres, Neon Auth e a Data API. O cadastro cria a adega e a primeira prateleira; login e consultas usam o endereço público do endpoint, sem senha do banco no navegador. O Postgres aplica RLS para separar os dados por proprietário.
+
+A estrutura já está aplicada no banco compartilhado. Para aplicar migrations novas, copie a connection string direta do botão **Connect** no Neon para `DATABASE_URL` dentro de `.env.local` e execute:
 
 ```powershell
-npm run db:start
-npm run db:seed
-npm run dev
+npm run db:migrate
 ```
 
-`db:seed` cria `.env.local` com a URL e a chave publicável locais, cria a conta de desenvolvimento e exibe o e-mail e a senha no terminal. A chave secreta só é usada pelo script e não é gravada em arquivo.
+Mantenha `DATABASE_URL` local e privada. O app normal só precisa de `NEXT_PUBLIC_NEON_DATABASE_URL`.
 
-Essas credenciais são exclusivas do Supabase local; não as use em um projeto hospedado.
+## Dados de demonstração
 
-Cada computador tem seu próprio banco local; os dados não sincronizam entre máquinas. Para limpar e reconstruir o banco, execute `npm run db:reset` e depois `npm run db:seed`; o reset apaga os dados desse banco local.
+Depois de criar uma conta no app, a seed opcional adiciona sete rótulos e 26 garrafas em duas prateleiras. Ela pede o e-mail da conta e usa `DATABASE_URL` local. Uma adega que já tenha garrafas não é alterada.
 
-O cadastro em lote usa uma função transacional; o Postgres valida dimensões, compatibilidade da prateleira e ocupação exclusiva. As tabelas têm RLS por proprietário.
+```powershell
+npm run db:seed
+```
+
+Como o banco é compartilhado na nuvem, os dados aparecem no notebook e neste PC após entrar na mesma conta. Não é necessário instalar Docker.

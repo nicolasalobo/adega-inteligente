@@ -133,7 +133,7 @@ Proprietário compartilha QR Code ou URL secreta e revogável → visitante sem 
 
 ## 8. Arquitetura proposta
 - **Web/PWA:** Next.js + TypeScript, mobile-first, câmera via navegador, instalável no iPhone.
-- **Banco e Auth da Fase 1:** Supabase Postgres + Supabase Auth, com RLS por proprietário; migrations SQL versionadas e constraints/transações para posições. A interface usa apenas a chave publicável; nunca expor `service_role`/`sb_secret` no navegador.
+- **Banco e Auth da Fase 1:** Neon Postgres + Neon Auth e Data API, com RLS por proprietário; migrations SQL versionadas e constraints/transações para posições. O navegador recebe apenas o endpoint público do projeto; a connection string privada fica em ferramentas locais de desenvolvimento e nunca no cliente.
 - **Backend:** rotas server-side em Next.js quando uma operação precisar de privilégios; jobs de preços separados do tráfego do usuário. O cadastro manual em lote usa função Postgres invoker e continua sujeito a RLS.
 - **Fotos:** armazenamento privado de objetos; URLs assinadas quando necessário; limitar tamanho/tipo.
 - **Hospedagem:** serviço com HTTPS, tarefas agendadas e banco gerenciado.

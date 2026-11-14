@@ -7,14 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:start": "supabase start",
-    "db:reset": "supabase db reset",
-    "db:status": "supabase status",
-    "db:seed": "node scripts/seed-local.mjs"
+    "db:migrate": "node scripts/migrate-neon.mjs",
+    "db:seed": "node scripts/seed-neon.mjs"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.7",
-    "@supabase/supabase-js": "2.119.0",
+    "@neon/neon-js": "^0.10.2",
     "lucide-react": "^1.72.0",
     "next": "16.4.6",
     "react": "19.3.0",
@@ -23,11 +20,12 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
-    "supabase": "3.1.0",
+    "pg": "^8.23.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   }

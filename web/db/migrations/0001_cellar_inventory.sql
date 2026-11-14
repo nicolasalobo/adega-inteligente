@@ -2,7 +2,7 @@
 
 create table public.cellars (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references auth.users (id) on delete cascade,
+  owner_id uuid not null references neon_auth."user" (id) on delete cascade,
   name text not null check (length(btrim(name)) > 0),
   created_at timestamptz not null default now(),
   constraint cellars_id_owner_id_unique unique (id, owner_id)
@@ -314,7 +314,7 @@ begin
 end;
 $$;
 
-revoke all on function public.register_wine_bottles(uuid, uuid, jsonb, jsonb) from public, anon;
+revoke all on function public.register_wine_bottles(uuid, uuid, jsonb, jsonb) from public, anonymous;
 grant execute on function public.register_wine_bottles(uuid, uuid, jsonb, jsonb) to authenticated;
 
 alter table public.cellars enable row level security;

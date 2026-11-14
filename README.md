@@ -24,7 +24,7 @@ Ordem atual: adega visual e cadastro manual → prova de conceito de reconhecime
 
 ## Desenvolvimento
 
-A arquitetura proposta no PRD usa Next.js com TypeScript e banco relacional. A escolha de provedores externos fica para quando a Fase 0 for retomada.
+A aplicação usa Next.js com TypeScript, Neon Postgres e Neon Auth no plano gratuito. A Data API permite que o app sincronize os dados pela internet, com RLS por proprietário. O plano gratuito tem cotas mensais; consulte [os limites atuais](https://neon.com/pricing).
 
 ### Rodar a interface
 
@@ -34,19 +34,18 @@ npm ci
 npm run dev
 ```
 
-Sem variáveis de Supabase, a aplicação abre uma demonstração local e salva as alterações neste navegador. Para usar login e persistência no Postgres local, consulte [web/README.md](web/README.md).
+Copie `web/.env.example` para `web/.env.local` e rode os comandos acima. Sem `NEXT_PUBLIC_NEON_DATABASE_URL`, a aplicação abre uma demonstração local e salva as alterações neste navegador.
 
 ### Rodar no notebook com banco de desenvolvimento
 
-Clone a branch atual e prepare o ambiente local:
+Clone a branch atual e conecte ao mesmo banco Neon:
 
 ```powershell
 git clone --branch codex/phase-1-base https://github.com/nicolasalobo/adega-inteligente.git
 cd adega-inteligente\web
 npm ci
-npm run db:start
-npm run db:seed
+Copy-Item .env.example .env.local
 npm run dev
 ```
 
-É necessário instalar e abrir Docker Desktop antes de `npm run db:start`. O banco e a seed ficam no notebook e não sincronizam com este PC.
+O `.env.example` inclui o endereço público do projeto. Entre com a mesma conta para ver os dados sincronizados. Não é preciso instalar Docker; migrations futuras e a seed opcional precisam da connection string privada no `DATABASE_URL`. Detalhes em [web/README.md](web/README.md).
