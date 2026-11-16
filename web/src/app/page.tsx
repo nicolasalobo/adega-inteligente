@@ -173,6 +173,11 @@ export default function Home() {
       setNeonClient(client);
       void client.auth.getUser().then(({ data, error }) => {
         if (error) {
+          if (/no user session found/i.test(error.message)) {
+            setDataMode("signed-out");
+            setHydrated(true);
+            return;
+          }
           setConnectionError(error.message);
           setDataMode("error");
           setHydrated(true);
