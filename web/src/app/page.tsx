@@ -10,6 +10,7 @@ import {
   Grid2X2,
   LayoutDashboard,
   Leaf,
+  Pencil,
   Plus,
   Search,
   Settings2,
@@ -115,6 +116,7 @@ export default function Home() {
   const [showAddBottle, setShowAddBottle] = useState(false);
   const [preferredPositionKey, setPreferredPositionKey] = useState<string | null>(null);
   const [showAddShelf, setShowAddShelf] = useState(false);
+  const [editingShelf, setEditingShelf] = useState<Shelf | null>(null);
   const [toast, setToast] = useState("");
   const searchInput = useRef<HTMLInputElement>(null);
 
@@ -227,6 +229,7 @@ export default function Home() {
       if (event.key === "Escape") {
         setShowAddBottle(false);
         setShowAddShelf(false);
+        setEditingShelf(null);
       }
     }
     window.addEventListener("keydown", handleShortcut);
@@ -340,6 +343,40 @@ export default function Home() {
     setSelectedPosition(null);
     setShowAddShelf(false);
     setToast("Prateleira criada");
+  }
+
+  async function updateShelf(shelfId: string, shelf: Omit<Shelf, "id">) {
+    const outOfBoundsBottle = cellar.bottles.find((bottle) =>
+      bottle.shelfId === shelfId && (bottle.row > shelf.rows || bottle.column > shelf.columns),
+    );
+    if (outOfBoundsBottle) {
+      throw new Error("Mova as garrafas que estão fora do novo tamanho antes de reduzir a prateleira.");
+    }
+
+    let updatedShelf: Shelf;
+    if (dataMode === "remote") {
+      if (!neonClient) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { data, error } = await neonClient.from("shelves").update({
+        name: shelf.name,
+        row_count: shelf.rows,
+        column_count: shelf.columns,
+        organization: shelf.organization,
+        rule_criterion: shelf.rule?.criterion ?? null,
+        rule_axis: shelf.rule?.axis ?? null,
+        rule_values: shelf.rule?.values ?? null,
+      }).eq("id", shelfId).select("*").single();
+      if (error) throw new Error(error.message || "Não foi possível atualizar a prateleira.");
+      updatedShelf = shelfFromDatabase(data);
+    } else {
+      updatedShelf = { ...shelf, id: shelfId };
+    }
+
+    setCellar((current) => ({
+      ...current,
+      shelves: current.shelves.map((item) => item.id === shelfId ? updatedShelf : item),
+    }));
+    setEditingShelf(null);
+    setToast("Prateleira atualizada");
   }
 
   function resetExample() {
@@ -493,7 +530,10 @@ export default function Home() {
                   {search && <button type="button" className="search-clear" onClick={() => setSearch("")} aria-label="Limpar busca"><X size={14} /></button>}
                   {!search && <kbd>Ctrl K</kbd>}
                 </label>
-                {view === "map" && <button className="secondary-button" onClick={() => setShowAddShelf(true)}><Settings2 size={16} /> Nova prateleira</button>}
+                {view === "map" && <>
+                  <button className="secondary-button" onClick={() => setEditingShelf(activeShelf)}><Pencil size={15} /> Editar prateleira</button>
+                  <button className="secondary-button" onClick={() => setShowAddShelf(true)}><Settings2 size={16} /> Nova prateleira</button>
+                </>}
               </div>
             </div>
 
@@ -612,6 +652,7 @@ export default function Home() {
 
       {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
       {showAddShelf && <AddShelfModal onClose={() => setShowAddShelf(false)} onSave={addShelf} />}
+      {editingShelf && <AddShelfModal key={editingShelf.id} shelf={editingShelf} onClose={() => setEditingShelf(null)} onSave={(shelf) => updateShelf(editingShelf.id, shelf)} />}
       {toast && <div className="toast-message" role="status"><span><Check size={15} /></span>{toast}</div>}
     </div>
   );
@@ -759,14 +800,14 @@ function AddBottleModal({
   );
 }
 
-function AddShelfModal({ onClose, onSave }: { onClose: () => void; onSave: (shelf: Omit<Shelf, "id">) => void | Promise<void> }) {
-  const [name, setName] = useState("");
-  const [rows, setRows] = useState(5);
-  const [columns, setColumns] = useState(8);
-  const [organization, setOrganization] = useState<Shelf["organization"]>("free");
-  const [criterion, setCriterion] = useState<WineCriterion>("country");
-  const [axis, setAxis] = useState<ShelfAxis>("row");
-  const [valueInput, setValueInput] = useState("");
+function AddShelfModal({ onClose, onSave, shelf }: { onClose: () => void; onSave: (shelf: Omit<Shelf, "id">) => void | Promise<void>; shelf?: Shelf }) {
+  const [name, setName] = useState(shelf?.name ?? "");
+  const [rows, setRows] = useState(shelf?.rows ?? 5);
+  const [columns, setColumns] = useState(shelf?.columns ?? 8);
+  const [organization, setOrganization] = useState<Shelf["organization"]>(shelf?.organization ?? "free");
+  const [criterion, setCriterion] = useState<WineCriterion>(shelf?.rule?.criterion ?? "country");
+  const [axis, setAxis] = useState<ShelfAxis>(shelf?.rule?.axis ?? "row");
+  const [valueInput, setValueInput] = useState(shelf?.rule?.values.join(", ") ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const ruleValues = valueInput.split(",").map((value) => value.trim()).filter(Boolean);
@@ -797,7 +838,7 @@ function AddShelfModal({ onClose, onSave }: { onClose: () => void; onSave: (shel
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="modal-card shelf-modal" role="dialog" aria-modal="true" aria-labelledby="add-shelf-title">
-        <div className="modal-heading"><div><span className="modal-kicker">CONFIGURAÇÃO DA ADEGA</span><h2 id="add-shelf-title">Nova prateleira</h2><p>Defina o tamanho e como quer organizar os vinhos.</p></div><button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
+        <div className="modal-heading"><div><span className="modal-kicker">CONFIGURAÇÃO DA ADEGA</span><h2 id="add-shelf-title">{shelf ? "Editar prateleira" : "Nova prateleira"}</h2><p>{shelf ? "Ajuste o tamanho e a organização desta prateleira." : "Defina o tamanho e como quer organizar os vinhos."}</p></div><button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
         <form onSubmit={submit}>
           <div className="form-grid">
             <label className="field full"><span>Nome da prateleira <i>*</i></span><input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Parede norte" required /></label>
@@ -817,7 +858,7 @@ function AddShelfModal({ onClose, onSave }: { onClose: () => void; onSave: (shel
             <div className="rule-preview"><span>PRÉVIA</span>{Array.from({ length: requiredValues }, (_, index) => <i key={index} style={{ background: `hsl(${13 + index * 24} 24% ${83 - (index % 3) * 4}%)` }}>{ruleValues[index] || `${axis === "row" ? "Linha" : "Coluna"} ${index + 1}`}</i>)}</div>
           </div>}
           {error && <p className="form-error" role="alert">{error}</p>}
-          <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={!name.trim() || saving}>{saving ? "Salvando…" : <><Plus size={16} /> Criar prateleira</>}</button></div>
+          <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={!name.trim() || saving}>{saving ? "Salvando…" : shelf ? <><Check size={16} /> Salvar alterações</> : <><Plus size={16} /> Criar prateleira</>}</button></div>
         </form>
       </section>
     </div>
