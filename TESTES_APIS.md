@@ -1,7 +1,13 @@
 # Guia prático para testar APIs de vinhos
 
 **Data das informações:** 13/11/2026. Preços e condições podem mudar.  
-**Situação atual:** documentação consultada; **não foram executadas chamadas autenticadas** às APIs especializadas porque não há chaves de API fornecidas.
+**Situação atual (17/11/2026):** fluxo ponta a ponta concluído no app local autenticado: cadastro manual, busca WineAPI, revisão de ficha, cadastro em lote, reuso da ficha existente e persistência após recarregar. Os registros temporários de validação foram removidos. Reconhecimento por foto está fora do escopo das fases 1 e 2 por custo.
+
+## Resultado inicial da busca textual WineAPI
+- Quara Estate Malbec 2016: a busca trouxe Quara Estate, Malbec, Cafayate. A ficha carregou Argentina e Cafayate, mas não informou safra nem uvas; portanto, não confirma que seja a safra 2016.
+- Quara Estate Malbec 2016 (revalidação): a WineAPI retornou 10 candidatos. A ficha de “Quara Estate, Malbec, Cafayate” carregou nome, produtor, país e região; a própria API não forneceu safra nem uva para esse registro.
+- Bellevue Bordeaux 2020: a busca trouxe vários candidatos, incluindo Chateau Bellevue La Randee e Chateau Bellevue Lugagnac Blanc. Nenhum foi selecionado, pois o nome sozinho não confirma a identidade do rótulo.
+- A busca funciona como localizador de candidatos. A ficha permanece editável e a pessoa precisa confirmar a identidade antes de cadastrar. No teste E2E, duas unidades do mesmo vinho foram agrupadas na ficha existente; a adega foi recarregada para confirmar persistência e os dados de teste foram removidos depois.
 
 ## Resumo da decisão
 - **WineAPI:** começar por busca de nome, ficha de vinho e preços. O plano Free oferece 100 requisições/dia para uso pessoal **não comercial**; identificação por foto é anunciada no Pro (US$ 100/mês). Preços têm cobertura limitada, e um vinho encontrado pode não ter cotação.

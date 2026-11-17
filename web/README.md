@@ -10,6 +10,12 @@ npm run dev
 
 O `.env.example` já aponta para o banco compartilhado do projeto. Use a mesma conta em qualquer computador para ver a mesma adega. Sem `NEXT_PUBLIC_NEON_DATABASE_URL`, a aplicação abre uma demonstração salva apenas neste navegador.
 
+## Busca de vinhos na WineAPI
+
+Para ativar a busca no cadastro, gere uma chave em **API Keys** no dashboard da WineAPI e coloque-a em `WINEAPI_API_KEY` no arquivo local `.env.local`. Não use o prefixo `NEXT_PUBLIC_` nessa variável: a chave é lida somente pelas rotas do servidor. Depois, reinicie `npm run dev`. O arquivo `.env.local` já é ignorado pelo Git.
+
+As rotas de busca exigem uma sessão ativa na adega e chamam a WineAPI pelo servidor. A seleção de um resultado carrega os detalhes da ficha; revise os campos preenchidos antes de salvar. Se não houver resultado ou a API estiver indisponível, o cadastro manual continua disponível.
+
 ## Banco e autenticação
 
 O projeto usa Neon Postgres, Neon Auth e a Data API. O cadastro cria a adega e a primeira prateleira; login e consultas usam o endereço público do endpoint, sem senha do banco no navegador. O Postgres aplica RLS para separar os dados por proprietário.

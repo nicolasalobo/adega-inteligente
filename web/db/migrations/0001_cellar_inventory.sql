@@ -189,7 +189,8 @@ create trigger bottles_validate_position_before_write
   before insert or update on public.bottles
   for each row execute function public.validate_bottle_position();
 
--- One function call inserts/reuses the wine ficha and reserves an entire batch of positions atomically.
+-- The definer role can resolve auth.uid() from Neon’s managed auth schema.
+-- This function validates ownership explicitly before writing any row.
 create or replace function public.register_wine_bottles(
   p_cellar_id uuid,
   p_shelf_id uuid,
@@ -198,12 +199,12 @@ create or replace function public.register_wine_bottles(
 )
 returns table (wine_id uuid, bottle_ids uuid[])
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare
   current_user_id uuid := (select auth.uid());
-  cellar_id uuid;
+  v_cellar_id uuid;
   shelf_row public.shelves%rowtype;
   name_value text;
   producer_value text;
@@ -222,17 +223,17 @@ begin
     raise exception 'Authentication is required' using errcode = '42501';
   end if;
 
-  select c.id into cellar_id
+  select c.id into v_cellar_id
   from public.cellars as c
   where c.id = p_cellar_id and c.owner_id = current_user_id;
 
-  if cellar_id is null then
+  if v_cellar_id is null then
     raise exception 'Cellar not found for this user' using errcode = '42501';
   end if;
 
   select s.* into shelf_row
   from public.shelves as s
-  where s.id = p_shelf_id and s.cellar_id = cellar_id;
+  where s.id = p_shelf_id and s.cellar_id = v_cellar_id;
 
   if not found then
     raise exception 'Shelf not found in this cellar' using errcode = '23503';
@@ -280,14 +281,14 @@ begin
   where length(btrim(grape.value)) > 0;
 
   insert into public.wines (cellar_id, name, producer, vintage, country, region, grapes, custom_value)
-  values (cellar_id, name_value, producer_value, vintage_value, country_value, region_value, grapes_value, custom_value)
+  values (v_cellar_id, name_value, producer_value, vintage_value, country_value, region_value, grapes_value, custom_value)
   on conflict (cellar_id, name_key, producer_key, vintage_key) do nothing
   returning id into registered_wine_id;
 
   if registered_wine_id is null then
     select w.id into registered_wine_id
     from public.wines as w
-    where w.cellar_id = cellar_id
+    where w.cellar_id = v_cellar_id
       and w.name_key = lower(name_value)
       and w.producer_key = lower(producer_value)
       and w.vintage_key = coalesce(vintage_value, '');
@@ -300,7 +301,7 @@ begin
   with inserted_bottles as (
     insert into public.bottles (cellar_id, wine_id, shelf_id, row_number, column_number)
     select
-      cellar_id,
+      v_cellar_id,
       registered_wine_id,
       p_shelf_id,
       (position.value ->> 'row')::integer,
