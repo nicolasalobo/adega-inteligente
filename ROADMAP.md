@@ -44,43 +44,41 @@
 
 **Saída:** busca textual → candidato escolhido → ficha revisada → posições → garrafas cadastradas e persistidas.
 
-## Fase 3 — Histórico e valor da coleção
-- [ ] Mover/trocar garrafas com histórico de cada movimentação.
-- [ ] Retirar com motivo opcional; avaliar por garrafa com média por vinho.
-- [ ] Preço pago obrigatório em compra nova, opcional em acervo anterior.
-- [ ] Preservar moeda original e taxas históricas; totais sempre em BRL.
-- [ ] Catálogo de cotações por safra/fonte; manual ou outras safras devidamente rotuladas.
-- [ ] Job semanal de atualização, histórico de cotações e valor confirmado vs estimado.
+## Fase 3 - Histórico e avaliações das garrafas
+- [ ] Mover e trocar garrafas, registrando data, posição de origem e destino.
+- [ ] Retirar garrafa com motivo opcional e registrar a movimentação no histórico.
+- [ ] Avaliar cada garrafa com nota/comentário opcionais e calcular a média por vinho.
 
-**Saída:** inventário auditável e dashboard financeiro honesto.
+**Saída:** inventário com histórico de movimentações, retiradas e avaliações.
 
 ## Fase 4 — Compartilhamento e beta familiar
 - [ ] QR Code revogável e URL não listada para leitura sem conta.
-- [ ] Duas opções independentes de visibilidade de preço por adega (pagos e mercado).
 - [ ] Convite por link somente do proprietário; permissões OWNER/MANAGER/VISITOR.
 - [ ] Validar controles no backend (inclusive tentativas de edição via API).
 - [ ] Testar com uma adega real de 2×(10×20) posições e outra pequena sem regra.
 - [ ] Melhorar UX no iPhone: câmera, busca, posições e carregamento.
 
-**Saída:** beta utilizável pela família sem vazamento de preços ou edição por visitantes.
+**Saída:** beta familiar com acesso por convite e controles de leitura/edição.
 
 ## Fase 5 — Hardening e expansão orientada por uso
-- [ ] Medir reconhecimento, taxa de correção humana, cobertura e preço por requisição.
+- [ ] Medir qualidade da busca textual, taxa de correção, cobertura e custo por consulta.
 - [ ] Resolver gargalos, acessibilidade, rate limits, observabilidade e backups.
 - [ ] Validar contratos/licenças dos dados antes de monetizar.
 - [ ] Só depois avaliar múltiplas adegas, transferências, recomendações e monetização.
 
 ## Ordem obrigatória de execução
-**Adega visual e cadastro manual → busca textual → histórico/preços → compartilhamento/beta familiar → hardening. Reconhecimento por foto permanece fora do roadmap ativo.**
+**Adega visual e cadastro manual → busca textual → histórico e avaliações → compartilhamento/beta familiar → hardening. Reconhecimento por foto permanece fora do roadmap ativo.**
 
 ## Critérios de bloqueio (não avançar sem resolver)
 - Identificação de rótulos ambíguos não pode selecionar marca/safra erradas silenciosamente.
 - Não conseguir garantir uma garrafa por posição bloqueia fase 2.
 - Fornecedor sem direitos para integração comercial não pode ser base única do produto vendável.
-- Preços sem fonte/safra/data não podem entrar no total como se fossem exatos.
 
 ## Backlog explicitamente adiado
 - Múltiplas adegas/transferências/em transporte;
 - Marketplace e revenda;
 - Funcionalidades sociais públicas;
 - IA sommelier e sensores físicos.
+
+## Decisão de escopo
+Preços de compra, cotações de mercado, conversão cambial e valor total da coleção não fazem parte do produto.

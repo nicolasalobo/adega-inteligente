@@ -1,7 +1,7 @@
 # Guia prático para testar APIs de vinhos
 
 **Data das informações:** 13/11/2026. Preços e condições podem mudar.  
-**Situação atual (17/11/2026):** fluxo ponta a ponta concluído no app local autenticado: cadastro manual, busca WineAPI, revisão de ficha, cadastro em lote, reuso da ficha existente e persistência após recarregar. Os registros temporários de validação foram removidos. Reconhecimento por foto está fora do escopo das fases 1 e 2 por custo.
+**Situação atual (17/11/2026):** fluxo ponta a ponta concluído no app local autenticado: cadastro manual, busca WineAPI, revisão de ficha, cadastro em lote, reuso da ficha existente e persistência após recarregar. Os registros temporários de validação foram removidos. Reconhecimento por foto está fora do escopo das fases 1 e 2 por custo. Preços e cotações de vinhos permanecem apenas como informação de pesquisa sobre APIs e não fazem parte do produto.
 
 ## Resultado inicial da busca textual WineAPI
 - Quara Estate Malbec 2016: a busca trouxe Quara Estate, Malbec, Cafayate. A ficha carregou Argentina e Cafayate, mas não informou safra nem uvas; portanto, não confirma que seja a safra 2016.
