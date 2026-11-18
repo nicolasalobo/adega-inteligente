@@ -42,7 +42,7 @@ Como o banco é compartilhado na nuvem, os dados aparecem no notebook e neste PC
 
 A tela Histórico apresenta movimentações e retiradas, incluindo origem, destino, data e motivo. Garrafas retiradas continuam disponíveis para avaliação pelo histórico. A nota (1 a 5) e o comentário são opcionais individualmente; informe ao menos um deles. A média de cada vinho considera todas as notas, inclusive das garrafas retiradas, e desconsidera avaliações somente com comentário.
 
-Para testar as regras no Neon, configure DATABASE_URL e execute `npm run test:phase3`. O teste cria dados temporários em uma transação e os reverte ao terminar.
+Para testar as regras no Neon, use exclusivamente uma branch de teste isolada e siga as instruções de regressão abaixo. O teste cria dados temporários em uma transação e os reverte ao terminar.
 
 ### Regressão em branch Neon isolada
 
@@ -57,3 +57,15 @@ npm run test:concurrency
 ```
 
 Os scripts conferem `neon.branch_id` na conexão e exigem IDs distintos; a confirmação da identidade da branch de produção no console continua necessária. Use credenciais e endpoint exclusivos da branch de teste. `test:phase3` usa transação revertida e JWT simulado; `test:auth-rls` cria duas contas reais de teste pela Neon Auth, verifica permissões pela Data API e apaga seus registros; concorrência usa duas conexões e apaga os próprios registros. Interrupções podem deixar registros de teste. Não execute em uma branch que contenha dados de produção não isolados.
+
+### Preparação limpa de uma branch Neon
+
+Em uma branch de teste sem dados da aplicação, inicialize Neon Auth e ative a Data API com Neon Auth **antes** das migrations. A ativação provisiona o esquema gerenciado `auth` e `auth.uid()`, enquanto Neon Auth fornece `neon_auth.user`; as migrations dependem desses componentes. Não apague nem recrie esquemas gerenciados. Confirme o projeto e a branch da connection string antes de executar `npm run db:migrate`. Esta instrução não autoriza migrations em produção.
+
+### Teste de interface
+
+Instale o Chromium com `npx playwright install chromium`, ou configure `PLAYWRIGHT_CHROMIUM_EXECUTABLE` para um Chrome/Chromium compatível. Em terminal separado, inicie a aplicação em `http://localhost:3101` com `NEXT_PUBLIC_NEON_DATABASE_URL` apontando para a mesma branch Neon isolada de `DATABASE_URL`. Em seguida, configure `TEST_NEON_BRANCH_ID` e `TEST_NEON_PRODUCTION_BRANCH_ID` como acima e execute `npm run test:ui-e2e`. O teste cria uma conta descartável, bloqueia requisições a outros endpoints Neon e remove seus registros ao terminar; interrupções podem deixar dados de teste.
+
+### Exercício de recuperação
+
+Um procedimento validado em 18/11/2026 criou uma branch-snapshot contendo dados descartáveis e, depois de alterar a origem, criou uma segunda branch a partir do snapshot. Foram comparados registros, migrations, definições de funções, ACLs, tabelas e políticas/RLS. Branches Neon são cópias do mesmo provedor, sujeitas a cotas e retenção; este exercício não substitui uma política de backup independente e recuperação de desastre.
