@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:migrate": "node scripts/migrate-neon.mjs",
     "db:seed": "node scripts/seed-neon.mjs",
-    "test:phase3": "node scripts/test-phase3.mjs"
+    "test:phase3": "node scripts/test-phase3.mjs",
+    "test:auth-rls": "node scripts/test-auth-rls.mjs",
+    "test:concurrency": "node scripts/test-concurrency.mjs"
   },
   "dependencies": {
     "@neon/neon-js": "^0.10.2",

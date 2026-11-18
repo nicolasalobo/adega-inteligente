@@ -43,3 +43,17 @@ Como o banco é compartilhado na nuvem, os dados aparecem no notebook e neste PC
 A tela Histórico apresenta movimentações e retiradas, incluindo origem, destino, data e motivo. Garrafas retiradas continuam disponíveis para avaliação pelo histórico. A nota (1 a 5) e o comentário são opcionais individualmente; informe ao menos um deles. A média de cada vinho considera todas as notas, inclusive das garrafas retiradas, e desconsidera avaliações somente com comentário.
 
 Para testar as regras no Neon, configure DATABASE_URL e execute `npm run test:phase3`. O teste cria dados temporários em uma transação e os reverte ao terminar.
+
+### Regressão em branch Neon isolada
+
+Os testes escrevem dados temporários. Crie e confirme uma branch de teste separada antes de executar; nunca aponte `DATABASE_URL` para produção. Configure os IDs obtidos no console Neon, não nomes de branches:
+
+```powershell
+$env:TEST_NEON_BRANCH_ID = 'br-id-da-branch-de-teste'
+$env:TEST_NEON_PRODUCTION_BRANCH_ID = 'br-id-da-branch-de-producao'
+npm run test:phase3
+npm run test:auth-rls
+npm run test:concurrency
+```
+
+Os scripts conferem `neon.branch_id` na conexão e exigem IDs distintos; a confirmação da identidade da branch de produção no console continua necessária. Use credenciais e endpoint exclusivos da branch de teste. `test:phase3` usa transação revertida e JWT simulado; `test:auth-rls` cria duas contas reais de teste pela Neon Auth, verifica permissões pela Data API e apaga seus registros; concorrência usa duas conexões e apaga os próprios registros. Interrupções podem deixar registros de teste. Não execute em uma branch que contenha dados de produção não isolados.

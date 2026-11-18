@@ -4,9 +4,15 @@ import { getNeonDatabaseUrl } from './neon-env.mjs';
 const c = new Client({ connectionString: getNeonDatabaseUrl() });
 await c.connect();
 try {
+ const expectedBranch = process.env.TEST_NEON_BRANCH_ID;
+ const productionBranch = process.env.TEST_NEON_PRODUCTION_BRANCH_ID;
+ if (!productionBranch || productionBranch === expectedBranch) throw new Error('Informe o ID da branch de produção, distinto da branch de teste.');
+ if (!expectedBranch || !/^br-[a-z0-9-]+$/.test(expectedBranch)) throw new Error('Defina TEST_NEON_BRANCH_ID com o ID da branch de teste isolada.');
+ const actualBranch = (await c.query("select current_setting('neon.branch_id', true) as id")).rows[0].id;
+ if (actualBranch !== expectedBranch) throw new Error('A conexão não corresponde à branch de teste indicada.');
  await c.query('begin');
- const {id: cellar, owner_id: owner} = (await c.query('select id,owner_id from public.cellars limit 1')).rows[0] ?? {};
- if (!cellar) throw new Error('É necessária uma adega existente para executar os testes.');
+ const owner = (await c.query('insert into neon_auth."user" (name,email,"emailVerified") values ($1,$2,false) returning id', ['Teste fase 3', `fase3-${crypto.randomUUID()}@example.invalid`])).rows[0].id;
+ const cellar = (await c.query("insert into public.cellars(owner_id,name) values ($1,'Adega temporária de teste') returning id", [owner])).rows[0].id;
  await c.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:owner})]);
  const shelf = (await c.query("insert into public.shelves(cellar_id,name,row_count,column_count,organization) values($1,'Teste temporário fase 3',2,3,'free') returning id",[cellar])).rows[0].id;
  const structured = (await c.query("insert into public.shelves(cellar_id,name,row_count,column_count,organization,rule_criterion,rule_axis,rule_values) values($1,'Teste estruturado',1,1,'structured','country','row',array['Chile']) returning id",[cellar])).rows[0].id;
@@ -37,6 +43,6 @@ try {
  const events=(await c.query('select movement_type,reason from public.bottle_movements where bottle_id=any($1::uuid[])',[ [a,b] ])).rows; assert.equal(events.length,4); assert.ok(events.some(e=>e.movement_type==='remove' && e.reason==='consumida'));
  await c.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:crypto.randomUUID()})]);
  await expectFailure(move,[cellar,b,shelf,1,3],'42501');
- console.log('Validados: movimento, troca, retirada, histórico, regras de prateleira, ocupação, limites, avaliações e isolamento por proprietário. Alterações de teste revertidas.');
+ console.log('Validados em transação: movimento, troca, retirada, histórico, regras, limites e avaliações; verificação de propriedade por JWT simulado. Alterações revertidas.');
 } finally { await c.query('rollback'); await c.end(); }
 
