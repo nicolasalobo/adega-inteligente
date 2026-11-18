@@ -506,3 +506,46 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .history-item small { color:#8b8076; margin-top:5px; }
 .history-item p { margin:8px 0 0; font-size:13px; overflow-wrap:anywhere; }
 @media (max-width: 600px) { .history-item { align-items:flex-start; flex-direction:column; } }
+.identification-panel { display:grid; gap:8px; margin:0 0 16px; padding:12px; border:1px solid #e9e2d8; border-radius:9px; background:#fbfaf7; }
+.identification-heading { display:flex; align-items:center; gap:8px; color:#713641; }
+.identification-heading > div { display:grid; gap:3px; }
+.identification-heading strong { color:#51463d; font-size:10px; font-weight:650; }
+.identification-heading small, .identification-note, .photo-identification p { color:#8f877d; font-size:9px; line-height:1.5; }
+.identification-note { margin:0; }
+.ean-entry-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end; gap:7px; }
+.ean-entry-row .field { min-width:0; }
+.ean-entry-row .field input { font-variant-numeric:tabular-nums; letter-spacing:.06em; }
+.ean-entry-row .secondary-button, .photo-identification .secondary-button { min-height:35px; padding:0 10px; font-size:9px; }
+.optional-provider, .barcode-association-confirm { display:flex; align-items:flex-start; gap:7px; color:#786d61; font-size:9px; line-height:1.5; }
+.optional-provider input, .barcode-association-confirm input { flex:0 0 auto; margin:2px 0 0; accent-color:#713641; }
+.identification-warning { margin:0; color:#a34b4d; font-size:9px; line-height:1.5; }
+.identification-message { margin:0; color:#72675b; font-size:9px; line-height:1.5; }
+.identification-results { display:grid; gap:7px; max-height:280px; overflow:auto; }
+.identification-candidate { display:grid; gap:5px; padding:9px; border:1px solid #e9e2d8; border-radius:7px; background:#fffefa; }
+.identification-candidate.selected { border-color:#9b7471; background:#faf4f0; }
+.identification-candidate strong, .identification-candidate small { display:block; }
+.identification-candidate strong { color:#403832; font-size:10px; }
+.identification-candidate small { color:#897d70; font-size:8px; line-height:1.4; }
+.identification-candidate p { margin:0; color:#796e63; font-size:8px; line-height:1.5; }
+.identification-sources { display:flex; flex-wrap:wrap; gap:8px; }
+.identification-sources a, .identification-sources span { color:#8c6f58; font-size:8px; text-decoration:underline; text-underline-offset:2px; }
+.identification-select { display:flex; align-items:center; gap:5px; justify-self:start; padding:3px 0; color:#713641; font-size:9px; }
+.identification-select > span { display:flex; align-items:center; gap:3px; color:#8c6f58; }
+.identification-attribution { color:#9a9084; font-size:8px; line-height:1.5; }
+.barcode-association-confirm { margin:0 0 12px; padding:8px 10px; border:1px solid #e2ebdf; border-radius:7px; background:#f6f8f4; }
+.photo-identification { display:grid; gap:7px; padding-top:8px; border-top:1px solid #eee8e1; }
+.photo-identification summary { display:flex; align-items:center; gap:6px; color:#6d5c4b; cursor:pointer; font-size:9px; }
+.photo-identification p { margin:0; }
+.photo-identification input[type="file"] { width:100%; color:#887d71; font-size:9px; }
+.barcode-scanner { position:fixed; z-index:70; inset:0; display:grid; align-content:center; justify-items:center; gap:14px; padding:24px; background:rgba(25,20,17,.92); color:#fffaf7; }
+.scanner-preview { position:relative; width:min(100%,560px); aspect-ratio:4/3; overflow:hidden; border-radius:12px; background:#100e0d; }
+.scanner-preview video { width:100%; height:100%; object-fit:cover; }
+.scanner-frame { position:absolute; top:30%; left:10%; width:80%; height:40%; border:2px solid #e6d4b2; border-radius:8px; box-shadow:0 0 0 999px rgba(0,0,0,.2); }
+.barcode-scanner p { max-width:560px; margin:0; color:#eee4d7; text-align:center; font-size:13px; line-height:1.5; }
+.barcode-scanner .text-button { color:#fff; font-size:12px; }
+@media (max-width:580px) {
+  .ean-entry-row { grid-template-columns:minmax(0,1fr) auto; }
+  .ean-entry-row .field { grid-column:1 / -1; }
+  .scanner-open-button { justify-self:start; }
+  .identification-panel { padding:10px; }
+}

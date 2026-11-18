@@ -1,19 +1,32 @@
 import { createClient } from "@neon/neon-js/supabase";
 
-export async function hasSignedInNeonUser(request: Request) {
+export type AuthenticatedNeonRequest = {
+  userId: string;
+  accessToken: string;
+  client: ReturnType<typeof createClient>;
+};
+
+export async function getAuthenticatedNeonRequest(request: Request): Promise<AuthenticatedNeonRequest | null> {
   const databaseUrl = process.env.NEXT_PUBLIC_NEON_DATABASE_URL;
-  if (!databaseUrl) return false;
   const authorization = request.headers.get("authorization") ?? "";
   const accessToken = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!accessToken) return false;
+  if (!databaseUrl || !accessToken) return null;
 
   try {
-    const client = createClient(databaseUrl);
-    const { data, error } = await client.auth.getClaims(accessToken);
-    if (error) console.warn("WineAPI proxy session check failed:", error.message);
-    return !error && Boolean(data.claims.sub);
+    const authClient = createClient(databaseUrl);
+    const { data, error } = await authClient.auth.getClaims(accessToken);
+    const userId = data?.claims?.sub;
+    if (error || typeof userId !== "string" || !userId) return null;
+
+    const client = createClient(databaseUrl, {
+      dataApi: { options: { global: { headers: { Authorization: `Bearer ${accessToken}` }, fetch: globalThis.fetch } } },
+    });
+    return { userId, accessToken, client };
   } catch {
-    console.warn("WineAPI proxy session check failed with an unexpected error.");
-    return false;
+    return null;
   }
+}
+
+export async function hasSignedInNeonUser(request: Request) {
+  return Boolean(await getAuthenticatedNeonRequest(request));
 }

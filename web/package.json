@@ -12,10 +12,15 @@
     "test:phase3": "node scripts/test-phase3.mjs",
     "test:auth-rls": "node scripts/test-auth-rls.mjs",
     "test:concurrency": "node scripts/test-concurrency.mjs",
-    "test:ui-e2e": "node scripts/test-ui-e2e.mjs"
+    "test:ui-e2e": "node scripts/test-ui-e2e.mjs",
+    "test:identification": "tsx --test scripts/test-identification.mts",
+    "test:identification:live": "node scripts/test-identification-live.mjs",
+    "test:ui-identification-local": "node scripts/test-ui-identification-local.mjs",
+    "test:migrations:local": "node scripts/test-migrations-local.mjs"
   },
   "dependencies": {
     "@neon/neon-js": "^0.10.2",
+    "@zxing/browser": "^0.2.1",
     "lucide-react": "^1.72.0",
     "next": "16.4.6",
     "react": "19.3.0",
@@ -32,6 +37,7 @@
     "pg": "^8.23.1",
     "playwright": "^1.65.1",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

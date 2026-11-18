@@ -16,6 +16,31 @@ Para ativar a busca no cadastro, gere uma chave em **API Keys** no dashboard da 
 
 As rotas de busca exigem uma sessão ativa na adega e chamam a WineAPI pelo servidor. A seleção de um resultado carrega os detalhes da ficha; revise os campos preenchidos antes de salvar. Se não houver resultado ou a API estiver indisponível, o cadastro manual continua disponível.
 
+## Identificação por EAN-13 e fotografia — Fase 2
+
+O cadastro aceita EAN-13 digitado ou lido pelo scanner `@zxing/browser`. A validação inclui o dígito verificador no cliente, no servidor e na migration. O scanner pede a câmera traseira quando disponível; requer HTTPS, mostra erros de permissão/dispositivo, cancela e libera os tracks de mídia ao fechar ou após uma leitura válida. O cadastro manual e a busca textual WineAPI existentes continuam disponíveis.
+
+O fluxo autenticado consulta primeiro associações da própria adega sob RLS, depois Open Food Facts, complementa pela WineAPI quando explicitamente habilitada, pode pesquisar a web quando o usuário autoriza e a integração foi habilitada, e só compara ambiguidades com OpenAI quando há chave, flag do servidor e consentimento por busca. A foto é alternativa separada e só é enviada depois de consentimento explícito. Provedores nunca escrevem no inventário; o usuário escolhe uma sugestão, revisa a ficha, informa quantidade e posições e confirma. A associação EAN-vinho e o lote são gravados na mesma transação. O EAN identifica o produto, não a safra. Candidatos e campos extraídos precisam de revisão.
+
+Novas variáveis (todas as integrações opcionais ficam desligadas por padrão):
+
+```text
+ENABLE_WINEAPI_IDENTIFICATION=false
+BRAVE_SEARCH_API_KEY=
+ENABLE_EXTERNAL_WEB_SEARCH=false
+OPENAI_API_KEY=
+OPENAI_IDENTIFICATION_MODEL=gpt-4.1-mini
+ENABLE_OPENAI_IDENTIFICATION=false
+```
+
+O endpoint Open Food Facts não recebe chave, usa `no-store` e não mantém cache local de seus dados. A base está sob ODbL e seus conteúdos sob Database Contents License; confirme atribuição, obrigações de compartilhamento e adequação ao produto antes do uso comercial. As fotos do catálogo possuem licença separada e não são copiadas. A WineAPI está desligada por padrão porque os termos publicados restringem o plano gratuito ao uso pessoal e não comercial; não a use comercialmente sem autorização/licença. Brave Search custa atualmente US$ 5/1.000 consultas depois de créditos mensais disponíveis; a configuração requer chave, flag e autorização individual. Chamadas OpenAI não foram habilitadas; custo depende do modelo, volume de tokens e imagens. Configure limites e orçamento no provedor antes de ativar.
+
+A migration `0007_intelligent_wine_identification.sql` cria a associação por adega e vinho (várias safras podem compartilhar o mesmo EAN), valida checksum, RLS de leitura e quotas persistentes de 30 identificações, 5 análises de foto e 5 resoluções por IA por usuário por hora. O script `npm run test:migrations:local` instalou 0001–0007 em PostgreSQL 16 descartável e testou o RPC atômico, RLS com duas contas simuladas, safras, erros e limites. Isso não valida a integração com Neon Auth/Data API. Aplicar migration somente em branch Neon isolada; ainda falta um branch ID e credenciais de teste verificáveis para repetir com Neon real. Nenhuma migration ou escrita foi feita no banco Neon configurado neste ambiente.
+
+Para regressão determinística: `npm run test:identification`. `npm run test:migrations:local` requer Docker e usa apenas um container PostgreSQL temporário com Neon Auth simulado. `npm run test:ui-identification-local` executa fluxos locais sem banco e sem tráfego externo. A consulta real de leitura ao Open Food Facts para os EANs de referência é reproduzível com `npm run test:identification:live`; códigos ausentes podem passar a existir no catálogo no futuro. A rota e os provedores WineAPI/Brave/OpenAI também têm integrações por adaptador/mock; chaves e autorização são necessárias para teste real e mock não conta como integração externa validada.
+
+Fontes de referência dos códigos testados: EAN `7892500022445` aparece como Vinho Chileno Panul Carménère 750 ml no [Atacadão](https://www.atacadao.com.br/vinho-chileno-panul-carmenere-garrafa-com-750ml-82045/p) e em tabela oficial de compras do [Diário Oficial de Mato Grosso do Sul](https://assets.imprensaoficial.ms.gov.br/public/prd/Diario%20Oficial/2026/04/06/DO12118_06_04_2026_SUP_1.pdf). A [busca pública pelo EAN `8436559528924`](https://barcode-list.ru/barcode/RU/%D0%9F%D0%BE%D0%B8%D1%81%D0%BA.htm?barcode=SAUVIGNON) lista Montecruz Cabernet Sauvignon 750 ml; o [produtor confirma o rótulo e a uva](https://bodegasfernandocastro.com/en/wines/montecruz-cabernet-sauvignon/), mas não publica esse EAN. Confirme no rótulo físico. Open Food Facts foi consultado ao vivo para ambos e retornou HTTP 404 sem ficha; isso não confirma nenhuma correspondência externa.
+
 ## Banco e autenticação
 
 O projeto usa Neon Postgres, Neon Auth e a Data API. O cadastro cria a adega e a primeira prateleira; login e consultas usam o endereço público do endpoint, sem senha do banco no navegador. O Postgres aplica RLS para separar os dados por proprietário.

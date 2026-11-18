@@ -36,6 +36,8 @@ import {
 } from "@/lib/cellar";
 import { fetchCellarInventory, shelfFromDatabase } from "@/lib/neon/cellar-data";
 import { createNeonBrowserClient, hasNeonConfig } from "@/lib/neon/client";
+import { BarcodeIdentification } from "@/components/BarcodeIdentification";
+import type { IdentificationCandidate } from "@/lib/identification/contracts";
 
 type View = "map" | "wines" | "history";
 type DataMode = "checking" | "signed-out" | "local" | "remote" | "error";
@@ -270,14 +272,11 @@ export default function Home() {
   const selectedBottle = selectedPosition ? bottleByPosition.get(selectedPosition) : undefined;
   const selectedWine = selectedBottle ? wineById.get(selectedBottle.wineId) : undefined;
 
-  async function addBottle(draft: WineDraft, shelf: Shelf, positions: PositionDraft[]) {
+  async function addBottle(draft: WineDraft, shelf: Shelf, positions: PositionDraft[], barcode?: { ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null) {
     if (dataMode === "remote") {
       const client = neonClient;
       if (!client || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { error } = await client.rpc("register_wine_bottles", {
-        p_cellar_id: remoteCellarId,
-        p_shelf_id: shelf.id,
-        p_wine: {
+      const winePayload = {
           name: titleCase(draft.name),
           producer: titleCase(draft.producer),
           vintage: titleCase(draft.vintage),
@@ -285,9 +284,20 @@ export default function Home() {
           region: titleCase(draft.region),
           grapes: draft.grape.split(/[,;/]/).map((grape) => titleCase(grape)).filter(Boolean),
           custom_value: titleCase(draft.customValue ?? ""),
-        },
+        };
+      const rpc = barcode ? "register_wine_bottles_with_barcode" : "register_wine_bottles";
+      const rpcArgs = {
+        p_cellar_id: remoteCellarId,
+        p_shelf_id: shelf.id,
+        p_wine: winePayload,
         p_positions: positions.map(({ row, column }) => ({ row, column })),
-      });
+        ...(barcode ? {
+          p_ean13: barcode.ean13,
+          p_source_provider: barcode.sourceProvider,
+          p_source_url: barcode.sourceUrl,
+        } : {}),
+      };
+      const { error } = await client.rpc(rpc, rpcArgs);
 
       if (error) {
         if (error.code === "23505") throw new Error("Uma dessas posições acabou de ser ocupada. Escolha outras posições livres.");
@@ -756,7 +766,7 @@ export default function Home() {
         </div>
       </main>
 
-      {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} neonClient={neonClient} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
+      {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} neonClient={neonClient} canIdentify={dataMode === "remote"} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
       {showAddShelf && <AddShelfModal onClose={() => setShowAddShelf(false)} onSave={addShelf} />}
       {editingShelf && <AddShelfModal key={editingShelf.id} shelf={editingShelf} onClose={() => setEditingShelf(null)} onSave={(shelf) => updateShelf(editingShelf.id, shelf)} />}
       {toast && <div className="toast-message" role="status"><span><Check size={15} /></span>{toast}</div>}
@@ -769,6 +779,7 @@ function AddBottleModal({
   wines,
   bottles,
   neonClient,
+  canIdentify,
   initialShelfId,
   initialPositionKey,
   onClose,
@@ -778,10 +789,11 @@ function AddBottleModal({
   wines: WineRecord[];
   bottles: Bottle[];
   neonClient: ReturnType<typeof createNeonBrowserClient> | null;
+  canIdentify: boolean;
   initialShelfId: string;
   initialPositionKey: string | null;
   onClose: () => void;
-  onSave: (draft: WineDraft, shelf: Shelf, positions: PositionDraft[]) => void | Promise<void>;
+  onSave: (draft: WineDraft, shelf: Shelf, positions: PositionDraft[], barcode?: { ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<WineDraft>(blankWine);
   const [catalogQuery, setCatalogQuery] = useState("");
@@ -795,6 +807,8 @@ function AddBottleModal({
   const [selectedKeys, setSelectedKeys] = useState<string[]>(initialPositionKey ? [initialPositionKey] : []);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [barcodeAssociation, setBarcodeAssociation] = useState<{ ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null>(null);
+  const [confirmBarcodeAssociation, setConfirmBarcodeAssociation] = useState(false);
   const shelf = shelves.find((item) => item.id === shelfId) ?? shelves[0];
   const reserved = useMemo(() => new Set(bottles.map((bottle) => positionKey(bottle.shelfId, bottle.row, bottle.column))), [bottles]);
   const duplicateMatch = wines.find((wine) => sameWine(wine, draft));
@@ -939,7 +953,7 @@ function AddBottleModal({
     const selectedPositions = positions.filter((position) => visibleSelectedKeys.includes(position.key));
     setSaving(true);
     try {
-      await onSave(draft, shelf, selectedPositions);
+      await onSave(draft, shelf, selectedPositions, confirmBarcodeAssociation ? barcodeAssociation : null);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar as garrafas.");
     } finally {
@@ -952,6 +966,29 @@ function AddBottleModal({
       <section className="modal-card add-bottle-modal" role="dialog" aria-modal="true" aria-labelledby="add-bottle-title">
         <div className="modal-heading"><div><span className="modal-kicker">BUSCA NO CATÁLOGO</span><h2 id="add-bottle-title">Adicionar à adega</h2><p>Pesquise o vinho ou preencha a ficha manualmente.</p></div><button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
         <form onSubmit={submit}>
+          <BarcodeIdentification
+            client={neonClient}
+            canPersist={canIdentify}
+            onAssociationChange={(association) => {
+              setBarcodeAssociation(association);
+              setConfirmBarcodeAssociation(Boolean(association));
+            }}
+            onSelect={(candidate: IdentificationCandidate) => {
+              setDraft({
+                ...blankWine,
+                name: candidate.name,
+                producer: candidate.producer,
+                vintage: candidate.vintage,
+                country: candidate.country,
+                region: candidate.region,
+                grape: candidate.grape,
+              });
+              setSelectedCandidateId("");
+              setSelectedKeys([]);
+              setCatalogMessage("Ficha preenchida com um candidato. Revise e corrija cada campo; a safra continua sem confirmação automática.");
+            }}
+          />
+          {barcodeAssociation && <label className="barcode-association-confirm"><input type="checkbox" checked={confirmBarcodeAssociation} onChange={(event) => setConfirmBarcodeAssociation(event.target.checked)} /> Ao salvar, associar o EAN-13 {barcodeAssociation.ean13} a esta ficha revisada.</label>}
           <section className="catalog-search" aria-label="Buscar vinho no catálogo">
             <div className="catalog-search-row">
               <label className="field"><span>Nome, produtor ou safra</span><input value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchWineCatalog(); } }} placeholder="Ex.: Quara Estate Malbec 2016" /></label>
