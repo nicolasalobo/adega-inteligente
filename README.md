@@ -10,17 +10,16 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Plano de execução
 
-O trabalho começa pela **Fase 1 — Base do projeto e adega visual mínima**, com cadastro manual e sem depender de serviços externos. A prova de conceito de reconhecimento (Fase 0) está adiada; será retomada depois da base manual e antes de implementar o cadastro por foto.
+As Fases 1 e 2 estão concluídas: adega visual, cadastro manual e busca textual. A identificação por foto está adiada por custo.
 
-Ordem atual: adega visual e cadastro manual → prova de conceito de reconhecimento → cadastro por foto → histórico e preços → QR e família → hardening e expansão.
+Próximas etapas: histórico e avaliações das garrafas → compartilhamento com a família → hardening.
 
 ## Princípios do MVP
 
 - Uma adega por conta proprietária na interface inicial.
 - Cada garrafa ocupa uma posição física exclusiva.
 - Cadastro manual disponível mesmo quando integrações externas falham.
-- Identificação por foto sempre pode ser revisada; dados ausentes permanecem desconhecidos.
-- Preços e estimativas mostram fonte, safra e incerteza com clareza.
+- Busca textual sugere candidatos; a pessoa revisa os dados antes de cadastrar.
 
 ## Desenvolvimento
 

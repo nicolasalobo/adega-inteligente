@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { Client } from 'pg';
+import { getNeonDatabaseUrl } from './neon-env.mjs';
+const c = new Client({ connectionString: getNeonDatabaseUrl() });
+await c.connect();
+try {
+ await c.query('begin');
+ const {id: cellar, owner_id: owner} = (await c.query('select id,owner_id from public.cellars limit 1')).rows[0] ?? {};
+ if (!cellar) throw new Error('É necessária uma adega existente para executar os testes.');
+ await c.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:owner})]);
+ const shelf = (await c.query("insert into public.shelves(cellar_id,name,row_count,column_count,organization) values($1,'Teste temporário fase 3',2,3,'free') returning id",[cellar])).rows[0].id;
+ const structured = (await c.query("insert into public.shelves(cellar_id,name,row_count,column_count,organization,rule_criterion,rule_axis,rule_values) values($1,'Teste estruturado',1,1,'structured','country','row',array['Chile']) returning id",[cellar])).rows[0].id;
+ const wine = (await c.query("insert into public.wines(cellar_id,name,producer,country) values($1,$2,'Teste','Brasil') returning id",[cellar,`Teste ${crypto.randomUUID()}`])).rows[0].id;
+ const insertBottle = async col => (await c.query('insert into public.bottles(cellar_id,wine_id,shelf_id,row_number,column_number) values($1,$2,$3,1,$4) returning id',[cellar,wine,shelf,col])).rows[0].id;
+ const a=await insertBottle(1), b=await insertBottle(2);
+ const expectFailure = async (sql,args,code) => { await c.query('savepoint expected_failure'); try { await c.query(sql,args); throw new Error('Operação deveria ter falhado'); } catch(e) { if(e.code!==code) throw e; } finally { await c.query('rollback to savepoint expected_failure'); } };
+ assert.equal((await c.query('select auth.uid() as uid')).rows[0].uid, owner);
+ const move='select public.move_bottle($1,$2,$3,$4,$5)';
+ await expectFailure(move,[cellar,a,shelf,1,1],'23514');
+ await expectFailure(move,[cellar,a,shelf,1,2],'23505');
+ await expectFailure(move,[cellar,a,shelf,4,1],'23514');
+ await expectFailure(move,[cellar,a,structured,1,1],'23514');
+ const chile = (await c.query("insert into public.wines(cellar_id,name,producer,country) values($1,$2,'Teste','Chile') returning id",[cellar,`Teste ${crypto.randomUUID()}`])).rows[0].id;
+ const special = (await c.query('insert into public.bottles(cellar_id,wine_id,shelf_id,row_number,column_number) values($1,$2,$3,1,1) returning id',[cellar,chile,structured])).rows[0].id;
+ await expectFailure('select public.swap_bottles($1,$2,$3)',[cellar,a,special],'23514');
+ assert.equal((await c.query('select count(*)::int n from public.bottle_movements where bottle_id=any($1::uuid[])',[[a,special]])).rows[0].n,0);
+ await c.query(move,[cellar,a,shelf,2,1]);
+ await c.query('select public.swap_bottles($1,$2,$3)',[cellar,a,b]);
+ let rows=(await c.query('select id,row_number,column_number from public.bottles where id=any($1::uuid[])',[ [a,b] ])).rows;
+ assert.deepEqual(rows.find(x=>x.id===a).row_number,1); assert.deepEqual(rows.find(x=>x.id===a).column_number,2); assert.deepEqual(rows.find(x=>x.id===b).row_number,2);
+ await expectFailure('select public.swap_bottles($1,$2,$3)',[cellar,a,a],'23514');
+ await c.query('select public.remove_bottle($1,$2,$3)',[cellar,a,'consumida']);
+ await expectFailure('select public.remove_bottle($1,$2,$3)',[cellar,a,null],'23503');
+ await c.query('insert into public.bottle_reviews(cellar_id,bottle_id,rating,comment) values($1,$2,4,$3),($1,$4,null,$5)',[cellar,a,'Ótima',b,'Apenas comentário']);
+ await expectFailure('insert into public.bottle_reviews(cellar_id,bottle_id,rating) values($1,$2,6)',[cellar,a],'23514');
+ assert.equal(Number((await c.query('select avg(rating) avg from public.bottle_reviews where cellar_id=$1 and bottle_id=any($2::uuid[])',[cellar,[a,b]])).rows[0].avg),4);
+ const events=(await c.query('select movement_type,reason from public.bottle_movements where bottle_id=any($1::uuid[])',[ [a,b] ])).rows; assert.equal(events.length,4); assert.ok(events.some(e=>e.movement_type==='remove' && e.reason==='consumida'));
+ await c.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:crypto.randomUUID()})]);
+ await expectFailure(move,[cellar,b,shelf,1,3],'42501');
+ console.log('Validados: movimento, troca, retirada, histórico, regras de prateleira, ocupação, limites, avaliações e isolamento por proprietário. Alterações de teste revertidas.');
+} finally { await c.query('rollback'); await c.end(); }
+
