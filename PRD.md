@@ -1,5 +1,6 @@
 # PRD — Adega Inteligente 2.0
 
+> **Atualização de consolidação — 18/11/2026:** o código antes descrito como local foi preservado no commit `e983c36` e integrado nesta branch junto com o planejamento `2a07fa2`. A descrição abaixo registra o estado na auditoria anterior. `npm ci`, lint e build (incluindo TypeScript) passaram; `node --check` passou para os scripts do teste e de ambiente. O teste transacional do Neon não foi executado: falta identificar inequivocamente um banco de teste isolado. As migrations aplicadas, persistência, concorrência, RLS e fluxos reais continuam sem validação nesta etapa. O npm audit indicou sete vulnerabilidades moderadas em dependências transitivas de desenvolvimento; nenhuma correção foi aplicada. As funcionalidades de movimentação, histórico e avaliações estão implementadas no código, mas continuam parciais até validação ponta a ponta.
 **18/11/2026 — proposta para revisão.** Plataforma brasileira mobile-first para gerir garrafas, posições, custo histórico, valor estimado e consumo, com identidade própria e ambição de competir com InVintory. SaaS e implantação presencial são objetivos posteriores; português brasileiro e BRL são padrão. Não há paridade comprovada.
 
 ## Estado auditado
