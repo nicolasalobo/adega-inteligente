@@ -1,3 +1,56 @@
+# Roadmap — Adega Inteligente 2.0
+
+**18/11/2026 — planejamento para revisão.** P0: MVP; P1: premium; P2: expansão. Fases sequenciais dependem do aceite anterior. Nenhuma fase nova foi concluída nesta execução.
+
+## Progresso
+- **Pronto segundo registros anteriores, sujeito a regressão:** base Neon, autenticação, uma adega, prateleiras, cadastro manual, lote, busca WineAPI e persistência relatada em 17/11. Testes não repetidos nesta auditoria.
+- **Em desenvolvimento local:** mover, trocar, retirar, histórico e avaliações; há código e migrations 0005–0006 locais, sem verificação atual de banco, RLS ou E2E. Esta branch documental não inclui essas alterações.
+- **Bloqueios:** reconciliar alterações locais com `origin/codex/phase-1-base` (37e0311) e `origin/main` (00e3d91); conferir migrations e backup; validar licenças, cobertura cambial, custos, ambiente de teste e acesso a iPhone. README e TESTES_APIS mantêm escopo anterior.
+- **Custos:** não estimados para operação. Pesquisa anterior relata plano gratuito WineAPI para uso pessoal; preços e condições comerciais requerem confirmação. Nenhum fornecedor contratado ou aprovado nesta execução.
+- **Testes desta entrega:** leitura, comparação de branches e inspeção estática. Não executados testes de software ou banco, migrations ou deploy. Referências do benchmark constam no PRD.
+
+## Primeira entrega — MVP (P0)
+
+### Fase 1 — Consolidação e regressão
+**Dependência:** reconciliar branches e alterações locais. **Trabalho:** verificar login/sessão, prateleiras, modos, manual, WineAPI, lote, unicidade concorrente, movimento, troca, retirada, histórico, avaliações e média; revisar migrations 0001–0006, RLS, recuperação e isolamento entre contas; criar regressões. **Aceite:** fluxos reais em Neon de teste persistem após recarga, concorrência e permissões verificadas e nenhuma falha crítica; migration perigosa exige backup e alvo validados.
+
+### Fase 2 — Identificação inteligente
+**Dependência:** fase 1. **Trabalho:** EAN-13, checksum, entrada manual, câmera e liberação; associação confirmada → Open Food Facts → WineAPI → pesquisa autorizada → IA estruturada → foto quando necessário; revisão, confirmação, fontes, limites e cache. Avaliar `@zxing/browser` e licenças. **Aceite:** identificar, revisar, informar quantidade/posições e persistir; câmera HTTPS e Safari/iPhone testados; ambiguidade não vira certeza e cadastro manual independe de APIs.
+
+### Fase 3 — Mobile-first e PWA
+**Dependência:** fase 2. **Trabalho:** navegação, cadastro progressivo, dashboard, toque, teclado, safe areas, acessibilidade, responsividade, prateleiras grandes, manifest e ícones. **Aceite:** operações essenciais confortáveis em iPhone e Android, desktop funcional, instalação compatível e erros tratados; sem offline complexo.
+
+### Fase 4 — Finanças iniciais
+**Dependência:** fase 3 e inventário íntegro. **Trabalho:** aquisição por garrafa/lote, moeda original e NUMERIC; câmbio histórico BRL e entrada manual; avaliação manual, histórico, adaptador de preços, safra alternativa revisável, preferência manual, dashboard com cobertura e privacidade backend/RLS. Preparar job semanal com lock, cache, deduplicação, limites e histórico; automático desligado sem licença/orçamento. **Aceite:** compra multimoeda, conversão verificável ou manual, avaliação manual, totais parciais explícitos, custo/mercado separados, comparação apenas nas unidades comparáveis e permissões testadas. Sem dependência obrigatória de API paga.
+
+### Fase 5 — Preview e MVP
+**Dependência:** fases 1–4 aceitas. **Trabalho:** testes, lint/build, dependências, backup/restauração, migrations e RLS; termos, variáveis privadas e custos; Vercel root `web`, redirects Neon Auth e preview HTTPS; testar persistência, finanças, câmera e iPhone sem dados destrutivos e revisar logs. **Aceite:** fluxo completo pela internet sem computador local; solicitar autorização explícita para produção após preview e validar novamente. Nenhum deploy autorizado nesta entrega.
+
+## Segunda entrega — Premium (P1)
+### Fase 6 — Localização 3D
+**Dependência:** MVP e mapa 2D preciso. **Trabalho:** avaliar Three.js/React Three Fiber, associar IDs, renderização leve sob demanda, toque/zoom, busca e fallback 2D. **Aceite:** busca localiza posição correta em 3D sem bloquear inventário em caso de falha.
+
+### Fase 7 — Sommelier com IA
+**Dependência:** MVP, permissões e limites. **Trabalho:** ferramentas de consulta a inventário, posições, histórico, preços autorizados e janelas; recomendações com fontes e contexto mínimo, inicialmente leitura. **Aceite:** respostas usam dados reais permitidos, posições corretas e não inventam dados; escrita futura exige confirmação.
+
+## Terceira entrega — Plataforma (P2)
+### Fase 8 — Consumo, colaboração e múltiplas adegas
+**Dependência:** MVP e controles de acesso. **Trabalho:** janelas com fontes, notificações opt-in; owner/manager/visitor, QR/links revogáveis e privacidade; migração segura para várias adegas; transferências separadas. **Aceite:** isolamento e revogação testados, sem vazamento financeiro ou associação errada.
+
+### Fase 9 — Ferramentas avançadas
+**Dependência:** fase 8. **Trabalho:** CSV com mapeamento, prévia, validação, duplicatas e relatório; exportação autorizada, relatórios e filtros. **Aceite:** importação segura sem sobrescrita silenciosa e exportação respeita acesso.
+
+### Fase 10 — Monetização
+**Dependência:** validação, custos e licenças. **Trabalho:** entrevistas e preços; planos gratuito/premium e concierge separado; após demanda, gateway, assinatura, acesso, webhooks assinados e cancelamento. **Aceite:** viabilidade e custos conhecidos, permissões e pagamentos verificados, nenhum cartão no banco.
+
+## Portões transversais
+Cada fase exige código e documentação versionados, migrations validadas, testes apropriados e fluxo completo, erros tratados, segurança, mobile e ausência de falhas críticas. Licença e cobertura são dependências explícitas; mocks não demonstram integração real. Produção exige aprovação após preview. Atualizar progresso, testes, custos, bloqueios e decisões a cada fase.
+
+## Registro preservado do planejamento anterior
+O texto abaixo reproduz o roadmap local de 17/11. Status e prioridades são históricos e não sobrepõem o plano 2.0.
+
+<details>
+<summary>Roadmap anterior integral</summary>
 # Roadmap de desenvolvimento — Adega pessoal
 
 **Versão:** 1.3 | **Status:** Fases 1 e 2 concluídas e validadas ponta a ponta | **Data:** 17/11/2026
@@ -82,3 +135,5 @@
 
 ## Decisão de escopo
 Preços de compra, cotações de mercado, conversão cambial e valor total da coleção não fazem parte do produto.
+
+</details>
