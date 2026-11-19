@@ -8,11 +8,19 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 - [Roadmap](ROADMAP.md): fases de entrega, ordem obrigatória e critérios de bloqueio.
 - [Testes de APIs](TESTES_APIS.md): notas de avaliação dos provedores externos.
 
+## Preview online para teste mobile
+
+O [Preview HTTPS da Adega Inteligente](https://adega-inteligente-git-codex-fase-5e93b5-nicolas-lobos-projects.vercel.app/) está ligado a um branch Neon de testes persistente e isolado. Ele usa dados descartáveis; não cadastre sua coleção real nesta versão. A proteção da Vercel permanece ativa. Para abrir pelo Safari, use o link temporário de acesso enviado separadamente; ele expira e pode ser renovado quando necessário. Depois, crie uma conta de teste ou entre com uma conta do ambiente de teste.
+
+No iPhone, abra o link de acesso no Safari para testar a aplicação. O scanner precisa da permissão da câmera. A validação física de câmera e Safari ainda está pendente; sem manifesto PWA ou ícones próprios, “Adicionar à Tela de Início” cria somente um atalho do site.
+
+Este Preview é uma etapa antecipada para testes mobile. Não é produção, não contém dados de produção e ainda não representa o aceite completo da Fase 3.
+
 ## Plano de execução
 
-As Fases 1 e 2 estão concluídas: adega visual, cadastro manual e busca textual. A identificação por foto está adiada por custo.
+Fase 1 concluída. O núcleo da Fase 2 de identificação por EAN e foto está implementado e validado no Neon isolado; OpenAI, Brave e WineAPI permanecem desativados sem credenciais, autorização de custos e licenças. O Preview mobile está disponível para teste manual antes de qualquer avanço de fase.
 
-Próximas etapas: histórico e avaliações das garrafas → compartilhamento com a família → hardening.
+Veja no [roadmap](ROADMAP.md) as pendências verificadas e os critérios para as próximas fases.
 
 ## Princípios do MVP
 
