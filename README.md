@@ -8,17 +8,23 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 - [Roadmap](ROADMAP.md): fases de entrega, ordem obrigatória e critérios de bloqueio.
 - [Testes de APIs](TESTES_APIS.md): notas de avaliação dos provedores externos.
 
-## Preview online para teste mobile
+## Beta pessoal protegido
 
-O [Preview HTTPS da Adega Inteligente](https://adega-inteligente-git-codex-fase-5e93b5-nicolas-lobos-projects.vercel.app/) está ligado a um branch Neon de testes persistente e isolado. Ele usa dados descartáveis; não cadastre sua coleção real nesta versão. A proteção da Vercel permanece ativa. Para abrir pelo Safari, use o link temporário de acesso enviado separadamente; ele expira e pode ser renovado quando necessário. Depois, crie uma conta de teste ou entre com uma conta do ambiente de teste.
+O [beta da Adega Inteligente](https://adega-inteligente-git-codex-fase-5e93b5-nicolas-lobos-projects.vercel.app/) usa o alias estável da branch `codex/fase-2-identificacao`; o endereço não contém `_vercel_share` e continua igual quando essa branch recebe novos deployments. A Vercel exige login da conta autorizada da equipe antes de abrir o aplicativo. A branch Neon vinculada (`fase2-identificacao-validacao-20261118`, `br-round-thunder-be945fsj`) é isolada, não expira e não contém a coleção de produção. Use somente dados de teste.
 
-No iPhone, abra o link de acesso no Safari para testar a aplicação. O scanner precisa da permissão da câmera. A validação física de câmera e Safari ainda está pendente; sem manifesto PWA ou ícones próprios, “Adicionar à Tela de Início” cria somente um atalho do site.
+O projeto Vercel tem Node.js `24.x` e as integrações pagas (OpenAI, Brave e WineAPI) permanecem desligadas. O domínio de produção anexado `adega-inteligente-liard.vercel.app` ainda não tem deployment Production ativo; ele não é o endereço deste beta. Nenhuma versão foi publicada em Production.
 
-Este Preview é uma etapa antecipada para testes mobile. Não é produção, não contém dados de produção e ainda não representa o aceite completo da Fase 3.
+### Adicionar à Tela de Início no iPhone
+
+1. Abra o endereço do beta acima no Safari e entre na Vercel com a conta autorizada.
+2. Toque em **Compartilhar** e depois em **Adicionar à Tela de Início**.
+3. Mantenha o nome “Adega Inteligente” e toque em **Adicionar**.
+
+O site inclui manifest, ícones próprios, `display: standalone` e metadados de web app para iPhone. A instalação física, login no modo standalone e permissão real da câmera ainda precisam ser confirmados no iPhone; o scanner depende de HTTPS e de autorização da câmera.
 
 ## Plano de execução
 
-Fase 1 concluída. O núcleo da Fase 2 de identificação por EAN e foto está implementado e validado no Neon isolado; OpenAI, Brave e WineAPI permanecem desativados sem credenciais, autorização de custos e licenças. O Preview mobile está disponível para teste manual antes de qualquer avanço de fase.
+Fase 1 concluída. O núcleo da Fase 2 de identificação por EAN e foto está implementado e validado no Neon isolado; OpenAI, Brave e WineAPI permanecem desativados sem credenciais, autorização de custos e licenças. O beta protegido está publicado como Preview na branch estável `codex/fase-2-identificacao`; nenhum deploy Production foi realizado.
 
 Veja no [roadmap](ROADMAP.md) as pendências verificadas e os critérios para as próximas fases.
 
