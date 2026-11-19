@@ -541,13 +541,13 @@ export default function Home() {
 
         <div className="sidebar-label">SUA COLEÇÃO</div>
         <nav className="main-nav" aria-label="Navegação principal">
-          <button className={view === "map" ? "nav-item active" : "nav-item"} onClick={() => setView("map")}>
+          <button aria-label="Mapa da adega" className={view === "map" ? "nav-item active" : "nav-item"} onClick={() => setView("map")}>
             <LayoutDashboard size={18} /> <span>Mapa da adega</span>
           </button>
-          <button className={view === "wines" ? "nav-item active" : "nav-item"} onClick={() => setView("wines")}>
+          <button aria-label="Meus vinhos" className={view === "wines" ? "nav-item active" : "nav-item"} onClick={() => setView("wines")}>
             <Archive size={18} /> <span>Meus vinhos</span>
           </button>
-          <button className={view === "history" ? "nav-item active" : "nav-item"} onClick={() => setView("history")}><Archive size={18} /> <span>Histórico</span></button>
+          <button aria-label="Histórico" className={view === "history" ? "nav-item active" : "nav-item"} onClick={() => setView("history")}><Archive size={18} /> <span>Histórico</span></button>
         </nav>
 
         <div className="sidebar-divider" />

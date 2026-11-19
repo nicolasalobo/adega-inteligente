@@ -36,7 +36,12 @@ try {
   assert.equal(ready, true, "local-only UI server did not become ready");
 
   browser = await chromium.launch({ headless: true, executablePath: chromePath, args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] });
-  const context = await browser.newContext({ permissions: ["camera"] });
+  const context = await browser.newContext({
+    permissions: ["camera"],
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
   const page = await context.newPage();
   const blockedRequests = [];
   page.on("request", (request) => {
@@ -46,9 +51,13 @@ try {
   });
 
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  const pageWidth = await page.evaluate(() => ({ viewport: window.innerWidth, document: document.documentElement.scrollWidth }));
+  assert.equal(pageWidth.document, pageWidth.viewport, "mobile page must not overflow horizontally");
   await page.getByRole("button", { name: "Registrar vinho" }).click();
   const modal = page.getByRole("dialog", { name: "Adicionar à adega" });
   await modal.waitFor({ state: "visible" });
+  const modalWidth = await modal.evaluate((element) => element.getBoundingClientRect().width);
+  assert.ok(modalWidth <= pageWidth.viewport, "wine form must fit the mobile viewport");
 
   const ean = modal.getByLabel("EAN-13");
   await ean.fill("7892500022444");
