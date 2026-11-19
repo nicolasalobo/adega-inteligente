@@ -15,6 +15,7 @@
     "test:ui-e2e": "node scripts/test-ui-e2e.mjs",
     "test:identification": "tsx --test scripts/test-identification.mts",
     "test:identification:live": "node scripts/test-identification-live.mjs",
+    "test:identification:neon": "node scripts/test-identification-neon.mjs",
     "test:ui-identification-local": "node scripts/test-ui-identification-local.mjs",
     "test:migrations:local": "node scripts/test-migrations-local.mjs"
   },

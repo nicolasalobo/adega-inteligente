@@ -1,9 +1,26 @@
-import { createClient } from "@neon/neon-js/supabase";
+import { createClient as createNeonDataClient } from "@neon/neon-js";
+import { createClient as createNeonAuthClient } from "@neon/neon-js/supabase";
+
+function createAuthenticatedDataClient(databaseUrl: string, accessToken: string) {
+  const endpoint = new URL(databaseUrl);
+  const [endpointLabel, ...domainLabels] = endpoint.hostname.split(".");
+  if (!endpointLabel || domainLabels.length < 2) throw new Error("URL de endpoint Neon inválida.");
+  const port = endpoint.port ? `:${endpoint.port}` : "";
+  const basePath = endpoint.pathname.replace(/\/+$/, "");
+  const dataApiUrl = `${endpoint.protocol}//${endpointLabel}.apirest.${domainLabels.join(".")}${port}${basePath}/rest/v1`;
+
+  return createNeonDataClient({
+    dataApi: {
+      url: dataApiUrl,
+      getToken: async () => accessToken,
+    },
+  });
+}
 
 export type AuthenticatedNeonRequest = {
   userId: string;
   accessToken: string;
-  client: ReturnType<typeof createClient>;
+  client: ReturnType<typeof createAuthenticatedDataClient>;
 };
 
 export async function getAuthenticatedNeonRequest(request: Request): Promise<AuthenticatedNeonRequest | null> {
@@ -13,14 +30,12 @@ export async function getAuthenticatedNeonRequest(request: Request): Promise<Aut
   if (!databaseUrl || !accessToken) return null;
 
   try {
-    const authClient = createClient(databaseUrl);
+    const authClient = createNeonAuthClient(databaseUrl);
     const { data, error } = await authClient.auth.getClaims(accessToken);
     const userId = data?.claims?.sub;
     if (error || typeof userId !== "string" || !userId) return null;
 
-    const client = createClient(databaseUrl, {
-      dataApi: { options: { global: { headers: { Authorization: `Bearer ${accessToken}` }, fetch: globalThis.fetch } } },
-    });
+    const client = createAuthenticatedDataClient(databaseUrl, accessToken);
     return { userId, accessToken, client };
   } catch {
     return null;
