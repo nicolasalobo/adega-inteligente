@@ -29,6 +29,13 @@ O teste Neon também encontrou um defeito de cliente server-side: `@neon/neon-js
 
 Os registros de teste permanecem apenas na branch descartável e expiram junto com ela. O teste não valida chamadas comerciais externas. WineAPI, Brave e OpenAI permanecem desligadas; Open Food Facts foi consultado ao vivo anteriormente e retornou 404 para ambos os EANs.
 
+## Validação da Fase 3 — 23/11/2026
+
+- As migrations `0008_require_bottle_review_rating.sql` e `0009_distinguish_swap_history.sql` foram aplicadas à branch temporária `codex-fase3-validation-20261123` (`br-fancy-mode-be8k6bgd`), criada no projeto Neon `adega-fase1-validacao` a partir da branch isolada anterior. Antes da 0008, havia 0 avaliações legadas sem nota; depois, o histórico continha 0001–0009, `bottle_reviews.rating` estava `NOT NULL` e `swap` estava permitido como tipo de evento. A branch expira em 24/11/2026 às 10:37 BRT. A conexão definida em `web/.env.local` e qualquer branch de produção não foram alteradas.
+- Blocos SQL isolados no Neon verificaram JWT/propriedade e os RPCs de movimento, troca e retirada; conflito de posição, dimensões inválidas, posição idêntica, regra de prateleira estruturada e troca incompatível foram rejeitados. Também foram conferidos liberação da posição, data/motivo/responsável da retirada, quatro eventos de histórico, dois eventos explicitamente do tipo `swap`, preservação das garrafas/posições, limite de nota, rejeição de nota nula e médias 4,5 para a safra 2020 e 2,0 para 2021. Os dados temporários foram removidos nos próprios blocos.
+- `npm run test:phase3:ui-local` passou em Chromium: movimento, troca identificada como troca no histórico, avaliação com comentário, média, retirada, responsável e histórico após reload; sem chamadas externas. Lint, os sete testes de identificação e `test:ui-identification-local` também passaram. Build de produção passou sob Node 24.22.3.
+- A validação de migrations local (`npm run test:migrations:local`) não pôde ser executada porque o Docker Desktop/daemon não estava disponível. O E2E autenticado via Data API/Preview ainda precisa ser executado após a criação do Preview para a branch desta entrega. Nenhuma alteração foi publicada em produção.
+
 ## Resultado inicial da busca textual WineAPI
 - Quara Estate Malbec 2016: a busca trouxe Quara Estate, Malbec, Cafayate. A ficha carregou Argentina e Cafayate, mas não informou safra nem uvas; portanto, não confirma que seja a safra 2016.
 - Quara Estate Malbec 2016 (revalidação): a WineAPI retornou 10 candidatos. A ficha de “Quara Estate, Malbec, Cafayate” carregou nome, produtor, país e região; a própria API não forneceu safra nem uva para esse registro.

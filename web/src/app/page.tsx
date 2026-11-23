@@ -16,6 +16,7 @@ import {
   Search,
   Settings2,
   Sparkles,
+  Star,
   Wine,
   X,
 } from "lucide-react";
@@ -125,6 +126,7 @@ export default function Home() {
   const [neonClient, setNeonClient] = useState<ReturnType<typeof createNeonBrowserClient> | null>(null);
   const [remoteCellarId, setRemoteCellarId] = useState<string | null>(null);
   const [remoteEmail, setRemoteEmail] = useState("");
+  const [remoteUserId, setRemoteUserId] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [view, setView] = useState<View>("map");
   const [activeShelfId, setActiveShelfId] = useState("shelf-main");
@@ -135,6 +137,7 @@ export default function Home() {
   const [showAddShelf, setShowAddShelf] = useState(false);
   const [editingShelf, setEditingShelf] = useState<Shelf | null>(null);
   const [toast, setToast] = useState("");
+  const [reviewingBottle, setReviewingBottle] = useState<Bottle | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
 
   const loadRemoteCellar = useCallback(async (
@@ -176,6 +179,7 @@ export default function Home() {
       setActiveShelfId(inventory.shelves[0]?.id ?? "");
       setRemoteCellarId(remoteCellar.id);
       setRemoteEmail(user.email ?? "");
+      setRemoteUserId(user.id);
       setSelectedPosition(null);
       setDataMode("remote");
       setHydrated(true);
@@ -249,6 +253,7 @@ export default function Home() {
         setShowAddBottle(false);
         setShowAddShelf(false);
         setEditingShelf(null);
+        setReviewingBottle(null);
       }
     }
     window.addEventListener("keydown", handleShortcut);
@@ -437,8 +442,8 @@ export default function Home() {
       setCellar(updated);
     } else {
       const now = new Date().toISOString();
-      const event = (item: Bottle, toShelfId: string, toRow: number, toColumn: number) => ({ id: crypto.randomUUID(), bottleId: item.id, wineId: item.wineId, type: "move" as const, fromShelfId: item.shelfId, fromRow: item.row, fromColumn: item.column, toShelfId, toRow, toColumn, reason: null, createdAt: now });
-      setCellar(current => ({ ...current, bottles: current.bottles.map(item => item.id === bottle.id ? { ...item, shelfId: targetShelf.id, row, column } : item.id === occupant?.id ? { ...item, shelfId: bottle.shelfId, row: bottle.row, column: bottle.column } : item), movements: [event(bottle, targetShelf.id, row, column), ...(occupant ? [event(occupant, bottle.shelfId, bottle.row, bottle.column)] : []), ...(current.movements ?? [])] }));
+      const event = (item: Bottle, toShelfId: string, toRow: number, toColumn: number, type: "move" | "swap") => ({ id: crypto.randomUUID(), bottleId: item.id, wineId: item.wineId, type, fromShelfId: item.shelfId, fromRow: item.row, fromColumn: item.column, toShelfId, toRow, toColumn, reason: null, actorId: null, createdAt: now });
+      setCellar(current => ({ ...current, bottles: current.bottles.map(item => item.id === bottle.id ? { ...item, shelfId: targetShelf.id, row, column } : item.id === occupant?.id ? { ...item, shelfId: bottle.shelfId, row: bottle.row, column: bottle.column } : item), movements: [event(bottle, targetShelf.id, row, column, occupant ? "swap" : "move"), ...(occupant ? [event(occupant, bottle.shelfId, bottle.row, bottle.column, "swap")] : []), ...(current.movements ?? [])] }));
     }
     setActiveShelfId(targetShelf.id); setSelectedPosition(positionKey(targetShelf.id,row,column)); setToast("Garrafa movida; movimentação registrada.");
   }
@@ -453,28 +458,28 @@ export default function Home() {
       if (error) { setToast(error.message); return; }
       setCellar(await fetchCellarInventory(neonClient!, remoteCellarId!));
     } else {
-      setCellar(current => ({ ...current, bottles: current.bottles.filter(item => item.id !== bottle.id), movements: [{ id: crypto.randomUUID(), bottleId: bottle.id, wineId: bottle.wineId, type: "remove", fromShelfId: bottle.shelfId, fromRow: bottle.row, fromColumn: bottle.column, toShelfId: null, toRow: null, toColumn: null, reason: reason.trim() || null, createdAt: new Date().toISOString() }, ...(current.movements ?? [])] }));
+      setCellar(current => ({ ...current, bottles: current.bottles.filter(item => item.id !== bottle.id), movements: [{ id: crypto.randomUUID(), bottleId: bottle.id, wineId: bottle.wineId, type: "remove", fromShelfId: bottle.shelfId, fromRow: bottle.row, fromColumn: bottle.column, toShelfId: null, toRow: null, toColumn: null, reason: reason.trim() || null, actorId: null, createdAt: new Date().toISOString() }, ...(current.movements ?? [])] }));
     }
     setSelectedPosition(null); setToast("Retirada registrada; posição liberada.");
   }
 
-  async function reviewBottle(bottle: Bottle) {
-    const current = (cellar.reviews ?? []).find(item => item.bottleId === bottle.id);
-    const rating = window.prompt("Nota de 1 a 5 (deixe em branco para apenas comentar):", current?.rating?.toString() ?? "");
-    if (rating === null) return;
-    const value = rating.trim() === "" ? null : Number(rating);
-    if (value !== null && (!Number.isInteger(value) || value < 1 || value > 5)) { setToast("A nota deve ser de 1 a 5."); return; }
-    const comment = window.prompt("Comentário opcional:", current?.comment ?? "");
-    if (comment === null) return;
-    if (comment.length > 2000 || (value === null && !comment.trim())) { setToast("Informe uma nota ou comentário de até 2000 caracteres."); return; }
+  function reviewBottle(bottle: Bottle) {
+    setReviewingBottle(bottle);
+  }
+
+  async function saveReview(bottle: Bottle, rating: number, comment: string) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error("A nota deve ser de 1 a 5 estrelas.");
+    if (comment.length > 2000) throw new Error("O comentário deve ter no máximo 2000 caracteres.");
     if (dataMode === "remote") {
-      const { error } = await neonClient!.from("bottle_reviews").upsert({ cellar_id: remoteCellarId, bottle_id: bottle.id, rating: value, comment: comment.trim() || null, updated_at: new Date().toISOString() }, { onConflict: "bottle_id" });
-      if (error) { setToast(error.message); return; }
-      setCellar(await fetchCellarInventory(neonClient!, remoteCellarId!));
+      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { error } = await neonClient.from("bottle_reviews").upsert({ cellar_id: remoteCellarId, bottle_id: bottle.id, rating, comment: comment.trim() || null, updated_at: new Date().toISOString() }, { onConflict: "bottle_id" });
+      if (error) throw new Error(error.message || "Não foi possível salvar a avaliação.");
+      setCellar(await fetchCellarInventory(neonClient, remoteCellarId));
     } else {
-      setCellar(currentState => ({ ...currentState, reviews: [...(currentState.reviews ?? []).filter(item => item.bottleId !== bottle.id), { bottleId: bottle.id, wineId: bottle.wineId, rating: value, comment: comment.trim() || null }] }));
+      setCellar(currentState => ({ ...currentState, reviews: [...(currentState.reviews ?? []).filter(item => item.bottleId !== bottle.id), { bottleId: bottle.id, wineId: bottle.wineId, rating, comment: comment.trim() || null }] }));
     }
     setToast("Avaliação salva para esta garrafa.");
+    setReviewingBottle(null);
   }
 
   function resetExample() {
@@ -499,6 +504,7 @@ export default function Home() {
     }
     setRemoteCellarId(null);
     setRemoteEmail("");
+    setRemoteUserId(null);
     setDataMode("signed-out");
   }
 
@@ -711,7 +717,7 @@ export default function Home() {
                       </div>
                       <div className="position-status">Média do vinho: {averageForWine(selectedWine.id)}</div>
                       <div className="detail-actions">
-                        <button className="secondary-button" onClick={() => void reviewBottle(selectedBottle)}>Avaliar garrafa</button>
+                        <button className="secondary-button" onClick={() => reviewBottle(selectedBottle)}>Avaliar garrafa</button>
                         <button className="secondary-button" onClick={() => void moveBottle(selectedBottle)}>Mover</button>
                         <button className="text-button" onClick={() => void removeBottle(selectedBottle)}>Retirar</button>
                       </div>
@@ -734,7 +740,8 @@ export default function Home() {
                   const wine = wineById.get(m.wineId);
                   const position = (id: string | null, row: number | null, column: number | null) => id ? `${cellar.shelves.find(s => s.id === id)?.name ?? "Prateleira"} · L${row} / C${column}` : "—";
                   const review = (cellar.reviews ?? []).find(r => r.bottleId === m.bottleId);
-                  return <article className="history-item" key={m.id}><div><strong>{wine?.name ?? "Vinho"}</strong><small>{wine?.producer} · {new Date(m.createdAt).toLocaleString("pt-BR")}</small><p>{m.type === "remove" ? "Retirada" : "Movimentação"}: {position(m.fromShelfId, m.fromRow, m.fromColumn)}{m.type === "move" && <> → {position(m.toShelfId, m.toRow, m.toColumn)}</>}</p>{m.reason && <p>Motivo: {m.reason}</p>}{review && <p>Avaliação: {review.rating ? `${review.rating} / 5` : "sem nota"}{review.comment && ` · ${review.comment}`}</p>}</div><button className="secondary-button" onClick={() => void reviewBottle({ id: m.bottleId, wineId: m.wineId, shelfId: m.fromShelfId, row: m.fromRow, column: m.fromColumn })}>{review ? "Editar avaliação" : "Avaliar"}</button></article>;
+                  const responsible = m.actorId ? (m.actorId === remoteUserId ? (remoteEmail || "Você") : "Outro responsável") : "Demonstração local";
+                  return <article className="history-item" key={m.id}><div><strong>{wine?.name ?? "Vinho"}</strong><small>{wine?.producer} · {new Date(m.createdAt).toLocaleString("pt-BR")}</small><p>{m.type === "remove" ? "Retirada" : m.type === "swap" ? "Troca" : "Movimentação"}: {position(m.fromShelfId, m.fromRow, m.fromColumn)}{m.type !== "remove" && <> → {position(m.toShelfId, m.toRow, m.toColumn)}</>}</p><p>Responsável: {responsible}</p>{m.reason && <p>Motivo: {m.reason}</p>}{review && <p>Avaliação: {review.rating ? `${review.rating} / 5` : "sem nota"}{review.comment && ` · ${review.comment}`}</p>}</div><button className="secondary-button" onClick={() => reviewBottle({ id: m.bottleId, wineId: m.wineId, shelfId: m.fromShelfId, row: m.fromRow, column: m.fromColumn })}>{review ? "Editar avaliação" : "Avaliar"}</button></article>;
                 })}
                 {!(cellar.movements ?? []).some(m => { const wine = wineById.get(m.wineId); return wine && matchesSearch(wine, search); }) && <div className="empty-list">Nenhuma movimentação encontrada.</div>}
               </div>
@@ -768,6 +775,7 @@ export default function Home() {
 
       {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} neonClient={neonClient} canIdentify={dataMode === "remote"} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
       {showAddShelf && <AddShelfModal onClose={() => setShowAddShelf(false)} onSave={addShelf} />}
+      {reviewingBottle && <ReviewBottleModal bottleName={wineById.get(reviewingBottle.wineId)?.name ?? "Garrafa"} review={(cellar.reviews ?? []).find(item => item.bottleId === reviewingBottle.id)} onClose={() => setReviewingBottle(null)} onSave={(rating, comment) => saveReview(reviewingBottle, rating, comment)} />}
       {editingShelf && <AddShelfModal key={editingShelf.id} shelf={editingShelf} onClose={() => setEditingShelf(null)} onSave={(shelf) => updateShelf(editingShelf.id, shelf)} />}
       {toast && <div className="toast-message" role="status"><span><Check size={15} /></span>{toast}</div>}
     </div>
@@ -1119,6 +1127,63 @@ function AddShelfModal({ onClose, onSave, shelf }: { onClose: () => void; onSave
           </div>}
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={!name.trim() || saving}>{saving ? "Salvando…" : shelf ? <><Check size={16} /> Salvar alterações</> : <><Plus size={16} /> Criar prateleira</>}</button></div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ReviewBottleModal({
+  bottleName,
+  review,
+  onClose,
+  onSave,
+}: {
+  bottleName: string;
+  review?: { rating: number | null; comment: string | null };
+  onClose: () => void;
+  onSave: (rating: number, comment: string) => Promise<void>;
+}) {
+  const [rating, setRating] = useState(review?.rating ?? 0);
+  const [comment, setComment] = useState(review?.comment ?? "");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (!rating) {
+      setError("Escolha uma nota de 1 a 5 estrelas.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(rating, comment);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar a avaliação.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+      <section className="modal-card review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title">
+        <div className="modal-heading"><div><span className="modal-kicker">SUA DEGUSTAÇÃO</span><h2 id="review-title">Avaliar garrafa</h2><p>{bottleName}</p></div><button type="button" className="icon-button modal-close" onClick={onClose} aria-label="Fechar" disabled={saving}><X size={18} /></button></div>
+        <form onSubmit={submit}>
+          <fieldset className="review-rating">
+            <legend>Nota <i>*</i></legend>
+            <div className="review-stars" role="group" aria-label="Nota de 1 a 5 estrelas">
+              {Array.from({ length: 5 }, (_, index) => {
+                const value = index + 1;
+                return <button key={value} type="button" className={value <= rating ? "review-star selected" : "review-star"} aria-label={`${value} ${value === 1 ? "estrela" : "estrelas"}`} aria-pressed={rating === value} onClick={() => setRating(value)} disabled={saving}><Star size={25} fill={value <= rating ? "currentColor" : "none"} /></button>;
+              })}
+            </div>
+            <span className="review-rating-label" aria-live="polite">{rating ? `${rating} de 5 estrelas` : "Escolha uma nota"}</span>
+          </fieldset>
+          <label className="field full review-comment"><span>Comentário <small>opcional</small></span><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} rows={4} placeholder="O que achou deste vinho?" disabled={saving} /></label>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "Salvando…" : <><Check size={16} /> Salvar avaliação</>}</button></div>
         </form>
       </section>
     </div>

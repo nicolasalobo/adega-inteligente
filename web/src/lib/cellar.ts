@@ -33,7 +33,7 @@ export type Bottle = {
   column: number;
 };
 
-export type Movement = { id: string; bottleId: string; wineId: string; type: "move" | "remove"; fromShelfId: string; fromRow: number; fromColumn: number; toShelfId: string | null; toRow: number | null; toColumn: number | null; reason: string | null; createdAt: string };
+export type Movement = { id: string; bottleId: string; wineId: string; type: "move" | "swap" | "remove"; fromShelfId: string; fromRow: number; fromColumn: number; toShelfId: string | null; toRow: number | null; toColumn: number | null; reason: string | null; actorId: string | null; createdAt: string };
 export type Review = { bottleId: string; wineId: string; rating: number | null; comment: string | null };
 export type CellarState = {
   movements?: Movement[];

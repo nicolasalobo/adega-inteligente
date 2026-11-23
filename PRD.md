@@ -1,92 +1,155 @@
-# PRD — Adega Inteligente 2.0
+# PRD — Adega pessoal inteligente
 
-> **Beta pessoal e smoke test concluídos — 18/11/2026:** deployment Vercel `dpl_CjrEAdoQEnihoeqrLqEVSuCKUZk4` ficou `READY` como Preview no commit `e8377c1` da branch estável `codex/fase-2-identificacao`. O alias persistente `adega-inteligente-git-codex-fase-5e93b5-nicolas-lobos-projects.vercel.app` foi atualizado para esse commit. Sem `_vercel_share`, ele responde com redirecionamento Vercel SSO; a sessão autenticada do Chrome abriu a app, mostrou a conta e o inventário Neon, e os mesmos dados reapareceram após reload. Manifest servido como `standalone`, viewport `viewport-fit=cover`, meta Apple `apple-mobile-web-app-capable=yes` e ícone Apple PNG 180×180 foram confirmados no deployment. Lint, TypeScript, build, sete testes unitários e `test:identification:neon` passaram. O projeto Vercel está configurado em Node.js `24.x`. OpenAI/Brave/WineAPI continuam desligadas; somente Preview aponta para a Neon isolada `br-round-thunder-be945fsj`, com expiração `Never` e migrations 0001–0007. Quatro contas descartáveis e seus dados de teste foram criados e mantidos nessa branch; contas existentes não foram apagadas. O domínio Vercel de produção `adega-inteligente-liard.vercel.app` continua sem deployment Production ativo e as variáveis Production permanecem vazias; nenhuma produção foi publicada ou alterada. Instalação, login standalone e câmera ainda precisam de validação física no iPhone.
+**Versão:** 1.1 (escopo atualizado)
+**Data:** 23/11/2026
+**Status:** Fases 1 e 2 concluídas; Fase 3 implementada e em validação.
+**Visão:** ajudar uma pessoa a cadastrar e encontrar fisicamente cada garrafa, com busca textual e adega visual.
 
-> **Fase 1 concluída — 18/11/2026:** em projeto Neon separado `adega-fase1-validacao`, branch `fase1-migracoes` sem expiração (`br-divine-math-bekaxx31`), Neon Auth e Data API provisionaram os esquemas gerenciados necessários. Sem tabelas prévias da aplicação, migrations 0001–0006 foram aplicadas em ordem; duas contas reais e RLS passaram na branch limpa. Dados descartáveis foram preservados em `fase1-snapshot` e restaurados em `fase1-restauracao` após alteração da origem: dados, 7 tabelas, 6 funções, 6 políticas, ACLs/RLS e 6 migrations conferidos. A restauração usa branches do mesmo provedor e não comprova recuperação de desastre independente. Playwright validou criação em lote, recarga, movimento, troca, avaliação, retirada e quatro eventos de histórico persistidos. Testes de iPhone físico permanecem na Fase 3. Nenhuma migration ou escrita ocorreu na produção.
-> **Núcleo da Fase 2 validado em Neon real — 18/11/2026, branch `codex/fase-2-identificacao`:** no projeto de validação `adega-fase1-validacao` (`soft-mode-37622581`), foi criada a branch isolada `fase2-identificacao-validacao-20261118` (`br-round-thunder-be945fsj`) a partir de `fase1-migracoes` (`br-divine-math-bekaxx31`), com expiração em 19/11/2026 às 20:24 BRT. Neon Auth e Data API reais validaram duas contas, isolamento RLS, associações próprias de EAN em duas safras, bloqueio de escrita direta, RPC atômico/rollback, quotas e fluxo Playwright de consulta, revisão, salvamento e persistência após recarga. A migration 0007 foi aplicada uma vez em transação guardada; o histórico contém 0001–0007 e os esquemas gerenciados `auth`/`neon_auth` foram preservados. O teste encontrou e corrigiu a integração de servidor: JWT validado no Neon Auth agora é passado ao cliente Data API no modo suportado de token externo. O limite observado é 30 chamadas combinadas por usuário/hora, com subtetos de 5 fotos e 5 resoluções por IA. Um burst de 40 RPCs paralelas aceitou/contabilizou 9 e recusou 31; não ultrapassou o teto, mas a recusa conservadora em rajadas permanece para investigação. Os testes unitários, regressão UI, lint, TypeScript e build passaram após a correção. Open Food Facts real respondeu 404 para os dois EANs; o código já confirmado `7892500022445` foi resolvido das associações da adega antes de qualquer catálogo externo. WineAPI, Brave e OpenAI permanecem desligados e sem validação ao vivo; custos não foram incorridos. **O núcleo de identificação está validado, mas a experiência completa multi-fonte ainda depende dessas integrações.** Teste físico de iPhone/Safari segue na Fase 3. Nenhum dado de produção foi alterado e nenhum deploy foi feito.
-> **Tentativa anterior de validação da Fase 1 — 18/11/2026 (supersedida pela conclusão registrada acima):** branch Neon isolada `teste-fase1-adega` (`br-purple-dawn-b6f9zebw`), filha de `production` (`br-small-meadow-b66kpzw6`), com expiração em 19/11. A tentativa inicial de recriar migrations em esquema limpo falhou pela dependência do esquema gerenciado `auth`; houve rollback confirmado. A validação posterior inicial também encontrou bloqueio de diálogo na interface. Esses bloqueios foram resolvidos no trabalho que concluiu a Fase 1 conforme o registro mais recente acima. Nenhuma migration ou escrita ocorreu em produção.
-> **Registro da consolidação da Fase 1 — 18/11/2026 (histórico):** o código foi preservado no commit `e983c36` e integrado ao planejamento `2a07fa2`. O diagnóstico daquela etapa foi superado pela validação de conclusão registrada acima.
-**18/11/2026 — proposta para revisão.** Plataforma brasileira mobile-first para gerir garrafas, posições, custo histórico, valor estimado e consumo, com identidade própria e ambição de competir com InVintory. SaaS e implantação presencial são objetivos posteriores; português brasileiro e BRL são padrão. Não há paridade comprovada.
+## 1. Problema e proposta de valor
+Colecionadores domésticos frequentemente não sabem com precisão quais vinhos têm nem em que posição estão guardados. Digitar ficha por ficha é demorado; o produto combina busca de vinhos revisável com uma adega física visual e o endereço exato de cada garrafa.
 
-## Estado inicial auditado (histórico; atualizado pelas validações registradas acima e na seção de Fase 2)
-Inspeção estática de documentos, código, branches e migrations antes da consolidação, sem executar testes, aplicação ou banco. HEAD local `5456cb8`, remoto de trabalho `37e0311` e `origin/main` `00e3d91`; havia alterações locais ainda não commitadas. Esse diagnóstico foi supersedido pela consolidação da Fase 1 no commit `617ca90` e sua validação posterior.
+### Público inicial
+- Proprietários de adegas domésticas, da pequena coleção à adega organizada em grandes prateleiras.
+- Familiares que consultam o acervo pelo QR Code ou colaboram com autorização do proprietário.
 
-| Funcionalidade | Estado observado |
-|---|---|
-| Autenticação, prateleiras, modos livre/estruturado, cadastro manual, lote e posições | Existente; histórico local relata validação Neon, não repetida nesta sessão. Requer regressão. |
-| Busca WineAPI e revisão | Parcial e dependente de fornecedor; rotas e fluxo locais, licença comercial e robustez pendentes. |
-| Movimento, troca, retirada, histórico, avaliações e médias | Parcial local; UI, serviços, migrations 0005–0006 e script presentes, sem verificação atual de banco, RLS ou E2E. |
-| Mobile | Parcial; CSS responsivo, sem aceite em iPhone. |
-| Finanças, EAN, foto, IA, PWA, 3D, compartilhamento e assinaturas | Ausentes no código inspecionado; integrações podem depender de fornecedor. |
+### Objetivo do MVP
+Cadastrar uma adega doméstica, pesquisar vinhos ou cadastrá-los manualmente, guardar uma ou várias garrafas em posições físicas e consultá-las. Manter histórico de movimentações, retiradas e avaliações.
 
-O registro acima é uma fotografia do diagnóstico inicial, não o status atual do projeto.
+## 2. Premissas de escopo
+- **MVP: uma adega por conta proprietária.** Modelo de dados deve permitir expansão posterior, mas não construir telas de múltiplas adegas agora.
+- **Transferências entre adegas: fora do MVP.** Não construir status de transporte, recebimento parcial ou fluxo interadegas.
+- Uma adega contém uma ou mais prateleiras; uma prateleira tem dimensões configuráveis (linhas × colunas). Exemplo real: 2 prateleiras, cada uma com 10 colunas × 20 linhas.
+- **Uma garrafa física = uma posição física exclusiva.** Posição obrigatória para cadastrar garrafas na adega; uma garrafa retirada libera a posição.
+- **Organização livre apenas em modo de adega pequena.** Para a organização estruturada, a pessoa configura um único critério por prateleira; a regra é obrigatória. A definição/limiar exato do que configura adega pequena fica como parâmetro de produto a validar, sem inventar uma capacidade fixa.
 
-## Matriz comparativa — consulta de 18/11/2026
-Legenda da Adega: existente, parcial, ausente e dependente de fornecedor. Referências públicas não comprovam paridade.
+## 3. Jornadas principais
+### J1 — Primeiro acesso
+1. Criar conta e entrar.
+2. Nomear a adega, informar se é pequena/organização livre ou estruturada.
+3. Criar prateleira(s) com número de linhas e colunas.
+4. Se organização estruturada: escolher um critério por prateleira (país, uva, safra, região ou campo personalizado) e distribuí-lo por **linhas ou colunas**.
+5. Ver prateleira visual e mapa de posições vazias.
 
-| Recurso | Referência InVintory | Adega: situação e objetivo |
-|---|---|---|
-| Inventário | Ilimitado [1,2] | Parcial; completo no MVP. |
-| Catálogo | Dados de vinho [1,2] | Parcial e fornecedor; busca e revisão. |
-| Código de barras | Confirmar no help [3] | Ausente; completo no MVP. |
-| Foto | Confirmar no help [3] | Ausente e fornecedor; foto/IA quando configurada. |
-| Lote | Edição em lote [2] | Parcial; validar cadastro. |
-| Localização física | Mapa e locais [1,2] | Parcial; completar 2D. |
-| 3D | Planos pagos [1,2,4] | Ausente; premium. |
-| Histórico e avaliações | Garrafas anteriores e avaliações [2] | Parcial local; validar. |
-| Preço de compra | Registro individual [2] | Ausente; MVP por unidade/lote. |
-| Valor de mercado | Por plano [2,5] | Ausente e fornecedor; manual no MVP, cobertura explícita. |
-| Histórico financeiro | Histórico de preços por plano [2] | Ausente; compras e avaliações auditáveis. |
-| Câmbio | Confirmar por mercado [3] | Ausente e fornecedor; histórico com fallback manual. |
-| Assistente IA | Por plano [1,2] | Ausente e fornecedor; premium. |
-| Janela de consumo | Dados de consumo [3] | Ausente e fornecedor; posterior, com fontes. |
-| Compartilhamento | Colaboradores [2] | Ausente; posterior. |
-| Importação CSV | Anunciada [1] | Ausente; posterior. |
-| Exportação CSV | Anunciada [1,2] | Ausente; posterior. |
-| Múltiplas adegas | Vários locais [1,2] | Parcial no modelo; interface posterior. |
-| Assinaturas | Planos grátis e pagos [1,2] | Ausente; posterior após validação. |
-| Implantação | Elite sob consulta [4] | Ausente; processo operacional posterior. |
+### J2 — Cadastrar e identificar vinho
+1. Pesquisar por nome, produtor ou safra na WineAPI; se não encontrar, seguir com cadastro manual.
+2. Escolher um candidato e carregar os dados disponíveis, deixando ausentes como desconhecidos.
+3. Revisar e corrigir a ficha antes de salvar.
+4. Informar quantidade e escolher uma posição livre/compatível para cada unidade.
+5. Salvar as garrafas e reutilizar uma ficha existente quando vinho, produtor e safra coincidirem.
+6. Preservar o scanner EAN-13 existente; não adicionar serviços pagos de reconhecimento por imagem.
 
-[1] https://invintory.com/pricing/ · [2] https://invintory.com/help/account-plans-billing/understanding-invintory-plans/ · [3] https://invintory.com/help/ · [4] https://invintory.com/elite/ · [5] https://invintory.com/help/wine-data-pricing/understanding-your-total-collection-value/ . Condições podem mudar; gratuito anunciado permite garrafas ilimitadas.
+### J3 - Cadastrar manualmente
+Preencher a ficha do vinho → confirmar → informar quantidade e posições → salvar as garrafas.
 
-## Jornadas e inventário
-Criar conta, adega e prateleiras livres ou estruturadas; identificar por EAN, foto, nome ou manualmente; revisar fontes e desconhecidos; informar aquisição e quantidade; escolher posição livre e compatível por garrafa. Buscar, localizar, mover, trocar e retirar com histórico; avaliação opcional por garrafa e média somente de notas existentes. Uma garrafa ativa por posição, garantida por transação, restrição e autorização no servidor/banco; troca valida ambos os lados; retirada preserva histórico. EAN pode ser compartilhado por safras e não é chave primária.
+### J4 — Encontrar vinho
+Pesquisar ou filtrar coleção → abrir ficha → visualizar todas as garrafas disponíveis e **prateleira, linha e coluna** → destacar localização no mapa visual.
 
-## Identificação
-Pipeline planejado: associação confirmada → Open Food Facts autorizado → candidatos WineAPI → pesquisa web autorizada → IA estruturada → foto quando necessário → revisão e confirmação. Falhas e campos desconhecidos são explícitos; cadastro manual sempre disponível. Guardar quando conhecidos nome, produtor, safra, país, região, uvas, tipo, volume, álcool, EAN, fonte e campos pendentes.
+### J5 — Retirar e avaliar
+Selecionar garrafa → retirar → liberar posição → registrar data, responsável e motivo opcional. Permitir nota obrigatória de 1 a 5 estrelas e comentário opcional por garrafa. Calcular a média por vinho e safra apenas a partir das notas existentes.
 
-Avaliar `@zxing/browser`, EAN-13 e dígito verificador, entrada manual, câmera traseira, permissões, HTTPS, liberação e Safari/iPhone. IA não inventa fonte ou safra, não confunde aproximação com exatidão e não escreve no inventário. Validar uploads; chamadas pagas autenticadas no backend com limites, orçamento, cache permitido e logs sem dados sensíveis. Benchmark com 30–50 rótulos mede identidade, safra, falsos positivos, cobertura, custo e latência.
+### J6 — Visita por QR Code
+Proprietário compartilha QR Code ou URL secreta e revogável → visitante sem conta consulta coleção e localizações em modo somente leitura. A adega **não é indexada/listada**; a posse do link concede leitura, então o link não é privacidade absoluta.
 
-### Fase 2 — implementação e validação observada
+## 4. Requisitos funcionais do MVP
+| ID | Requisito | Prioridade | Aceite |
+|---|---|---|---|
+| F01 | Conta, login e adega do proprietário | P0 | Conta autentica; proprietário gerencia sua adega |
+| F02 | Prateleiras visuais com linhas/colunas editáveis | P0 | 10×20 renderiza e mantém endereço único por posição |
+| F03 | Endereço de posição e ocupação exclusiva | P0 | Não permite duas garrafas na mesma posição; gravação atômica |
+| F04 | Modo livre para adega pequena | P0 | Posição livre aceita qualquer vinho no modo livre |
+| F05 | Organização por um critério por prateleira estruturada | P0 | Usuário escolhe linhas **ou** colunas; regra bloqueia incompatíveis |
+| F06 | Múltiplas uvas | P0 | Vinho de corte pode ocupar posição correspondente a qualquer uva confirmada |
+| F07 | Busca textual e revisão da ficha | P0 | Selecionar candidato; campos ausentes continuam desconhecidos e editáveis |
+| F08 | Cadastro manual de vinho | P0 | Garrafa pode ser cadastrada mesmo sem resultado ou integração externa |
+| F09 | Cadastro em lote do mesmo vinho | P0 | Para N unidades, exigir N posições válidas distintas |
+| F10 | Sugestão inteligente de posição | P1 | Sugere próximas a vinhos iguais/semelhantes sem bloquear escolha válida |
+| F11 | Mover e trocar posições | P1 | Troca validada dos dois lados e registrada atomicamente |
+| F12 | Histórico auditável | P1 | Cada movimento e retirada registra data, usuário e origens/destinos |
+| F13 | Retirada e avaliação por garrafa | P1 | Histórico e avaliações opcionais; média correta por vinho/safra |
+| F14 | QR/link revogável para visitante sem login | P1 | Somente leitura, acesso não indexado; regeneração/revogação efetiva |
+| F15 | Compartilhamento por convite | P2 | Apenas proprietário emite convite; gerente edita; visitante consulta |
 
-- EAN-13 é validado com checksum no cliente e servidor; `0007_intelligent_wine_identification.sql` também protege o banco. O EAN identifica a embalagem, não uma safra. Vínculos são por `cellar_id` + `wine_id`, permitindo várias safras/adegas sem revelar associações de outras contas.
-- Scanner usa `@zxing/browser@0.2.1`, solicita `facingMode: environment`, lida com câmera negada/ausente/ocupada e encerra `controls` e tracks ao cancelar ou ler. Foi testado o fluxo Chromium local de permissão/abertura/cancelamento; iPhone/Safari físico fica para Fase 3.
-- O pipeline autenticado é associação própria/RLS → Open Food Facts v3 → WineAPI opt-in → Brave Search opt-in em caso sem resultado/ambiguidade → seleção de candidato por OpenAI estruturada e opt-in. Foto passa por endpoint separado, exige consentimento, chave e flag de servidor. Provedores não alteram o inventário; o usuário escolhe, revisa e confirma. A migration liga a associação confirmada e as garrafas na mesma transação.
-- Open Food Facts retorna campos como candidatos com origem e sem cache local. A base usa ODbL, conteúdo individual Database Contents License, e seus dados comunitários não têm garantia de precisão; consulte [termos e atribuição oficiais](https://world.openfoodfacts.org/terms-of-use). A adequação de redistribuição/uso comercial precisa de revisão jurídica. A WineAPI publica restrição de uso pessoal e não comercial no plano gratuito; desabilitada até licença compatível. A [Brave Search API](https://api-dashboard.search.brave.com/app/plans?tab=normal) custa atualmente US$ 5/1.000 buscas depois dos créditos elegíveis. Chamadas OpenAI dependem de modelo e volume; preço deve ser conferido na [tabela vigente](https://openai.com/api/pricing/) antes de ativar. Integrações opcionais ficam desligadas por padrão; IA/web também exigem consentimento por operação. Neon confirmou limite combinado de até 30 chamadas de identificação por usuário/hora, com subtetos de até 5 análises de foto e 5 resoluções por IA. Teste sequencial passou; em um burst de 40 RPCs paralelas, 9 foram aceitas e contabilizadas e 31 recusadas, sem exceder o limite. Essa recusa conservadora sob concorrência precisa de investigação antes de depender de rajadas de solicitações.
-- `npm run test:identification` cobre checksum, associação/ambiguidade, ordem dos provedores, dados ausentes/falhas e bloqueio de IDs inventados pela IA. `npm run test:identification:live` exerceu Open Food Facts real e recebeu 404 (sem ficha) nos dois EANs. Fontes externas públicas: [Atacadão — Panul Carménère 750 ml/EAN 7892500022445](https://www.atacadao.com.br/vinho-chileno-panul-carmenere-garrafa-com-750ml-82045/p), [Diário Oficial MS — mesma correspondência](https://assets.imprensaoficial.ms.gov.br/public/prd/Diario%20Oficial/2026/04/06/DO12118_06_04_2026_SUP_1.pdf); para `8436559528924`, [diretório de códigos — Montecruz Cabernet Sauvignon](https://barcode-list.ru/barcode/RU/%D0%9F%D0%BE%D0%B8%D1%81%D0%BA.htm?barcode=SAUVIGNON) e [página oficial do produtor sobre o rótulo](https://bodegasfernandocastro.com/en/wines/montecruz-cabernet-sauvignon/). O produtor confirma o vinho e a uva, mas não lista EAN; confirmar código no rótulo físico antes de tratar como associação exata.
-- **Validação real e pendências:** `npm run test:identification:neon` passou contra a branch Neon isolada acima, usando Neon Auth, Data API e duas contas reais de teste; validou RLS nas duas direções, associação confirmada por duas safras, resolução antes do Open Food Facts, escrita direta bloqueada, EAN/posições inválidos, rollback, quota global e gravação/reload pela interface. A migration 0007 foi aplicada após confirmação de `auth` e das seis migrations anteriores; histórico e objetos foram conferidos depois. WineAPI/Brave/OpenAI ainda exigem credenciais, licença, consentimento e teste real. A API externa OFF já foi consultada ao vivo e não tem fichas para os dois EANs. Nenhuma escrita ocorreu em produção e nenhum deploy foi feito. A branch de validação é temporária e expira na data indicada acima.
+**Nota:** P0 = indispensável para primeira versão utilizável; P1 = extensão para beta completo; P2 = após base estabilizada. Nenhuma integração externa é requisito para conseguir cadastrar manualmente.
 
-## Finanças — P0 do MVP
-**Aquisição:** preço, moeda ISO, data, quantidade, fornecedor e observações por garrafa/lote. Compra nova exige preço; acervo antigo, presente e herança admitem desconhecido. Aceitar preço unitário ou total de lote com distribuição correta e custos distintos por compra. Usar NUMERIC/DECIMAL e arredondamento definido.
+## 5. Regras de negócio detalhadas
+### Posições
+- `position = cellar_id + shelf_id + row_index + column_index` (unívoca). Linha/coluna não podem extrapolar dimensões.
+- Acesso concorrente: duas operações não podem ocupar a mesma posição. Usar transação, restrição de unicidade para garrafa ativa e verificação de compatibilidade no servidor.
+- Apenas prateleiras **estruturadas** exigem metadados usados na regra. Se uva/país/safra necessário estiver ausente, pedir confirmação antes de selecionar posição.
+- Mover/trocar não apaga histórico nem altera dados de aquisição.
 
-**Câmbio:** BRL, USD, EUR, GBP, ARS e CLP extensíveis. Preservar valores originais. BRL dispensa conversão; com data, usar taxa histórica até a data, nunca futura, registrando taxa, data efetiva e fonte. Sem data ou taxa, permitir equivalente BRL manual identificado. Valores confirmados não mudam silenciosamente. Avaliar https://frankfurter.dev/ e https://frankfurter.dev/currencies/; moeda listada não garante cobertura do par, data ou termos.
+### Produto x garrafa
+- `Wine`: identidade de vinho/produtor/rótulo e, quando disponível, safra validada.
+- `Bottle`: unidade física, posição, status e histórico individual.
+- O mesmo vinho/safra pode ter várias garrafas físicas.
+- Não confundir vinhos distintos com nomes parecidos; jamais assumir que todo “Bellevue” corresponde ao mesmo produtor ou safra.
 
-**Mercado:** avaliação manual identificada e datada, não cotação real. Adaptador registra vinho, safra, volume, valor/moeda originais, BRL, data, provedor, fonte, tipo, correspondência e aproximação. Não equiparar varejo, oferta, transação e leilão. Outra safra só se a exata faltar, vinho base coincidir e usuário revisar ou rejeitar. Cotação licenciada exata pode substituir avaliação manual, preservando histórico e preferência. Investigar WineAPI, Wine Labs, Liv-ex e Wine-Searcher; nenhum fornecedor aprovado.
+### Permissões
+- `OWNER`: configura prateleiras, membros e compartilhamento, além de gerir o estoque.
+- `MANAGER`: pode cadastrar, mover, retirar e avaliar; não emite convites nem muda controles de acesso.
+- `VISITOR`: somente leitura; sem conta via link/QR; visitantes convidados com conta continuam sem edição.
+- As rotas de API verificam função e propriedade; não depender apenas de esconder botões.
 
-**Job:** preparar atualização semanal com deduplicação, cache, incrementos, limites, lock, histórico e falhas; consultas automáticas desligadas até licença e orçamento. Não fabricar pontos de gráfico.
+## 6. UX e telas
+1. Login/criar conta.
+2. Onboarding de adega e prateleiras (modo pequeno/livre ou estruturado).
+3. Dashboard: total de garrafas, ocupação e busca.
+4. Adega visual: grid por prateleira; zoom, filtros, ocupação, posição selecionada.
+5. Busca textual: resultados revisáveis e seleção de posições em lote.
+6. Busca/cadastro manual de vinho.
+7. Ficha do vinho: informações, origem dos dados e garrafas/localizações.
+8. Histórico: retiradas, avaliações e movimentações.
+9. Visitante por link/QR (sem login; somente leitura).
+10. Configurações: prateleiras e compartilhamento.
 
-**Painel:** custo histórico das garrafas ativas, valor estimado, diferença somente para garrafas com ambos, contagens com/sem preço, valores confirmados e aproximados, última atualização e totais parciais. Diferença não é lucro realizado. Preparar evolução real, distribuições por país, uva, região e safra, participação e comparação de custo/valor. Preservar compras, câmbio, avaliações, atualizações e retiradas.
+**Padrão móvel:** fluxos curtos, botões grandes, navegação fluida no iPhone, sem exigir digitação desnecessária; desktop responsivo.
 
-**Privacidade:** preço pago privado por padrão; proprietário sempre vê, gerente somente autorizado e visitante não vê valores privados. Aplicar configuração por adega no backend, RLS e exportações; testar isolamento entre contas.
+## 7. Busca textual e confirmação da ficha
+1. Pesquisar por nome, produtor ou safra na WineAPI por uma rota segura do servidor.
+2. Exibir candidatos como sugestões, sem tratar correspondência como confirmação automática.
+3. Carregar os detalhes disponíveis; preservar campos ausentes como desconhecidos.
+4. Permitir correção manual antes do cadastro e manter o cadastro manual como alternativa.
+5. O scanner EAN-13 existente permanece disponível. Não adicionar serviço pago de reconhecimento por imagem.
 
-## UX e arquitetura
-Navegação Início, Minha adega, Vinhos, Finanças e Perfil; adicionar destacado. Início mostra garrafas, rótulos, capacidade, valor autorizado, recentes e prateleiras. Cadastro progressivo: identificar → revisar → quantidade/aquisição → localização → confirmar. Exigir toque, teclado, safe areas, acessibilidade, erros, carregamento e prateleiras grandes; PWA com manifest e ícones, sem offline complexo.
+## 8. Arquitetura proposta
+- **Web:** Next.js + TypeScript, interface responsiva.
+- **Banco e Auth da Fase 1:** Neon Postgres + Neon Auth e Data API, com RLS por proprietário; migrations SQL versionadas e constraints/transações para posições. O navegador recebe apenas o endpoint público do projeto; a connection string privada fica em ferramentas locais de desenvolvimento e nunca no cliente.
+- **Backend:** rotas server-side para integrações; cadastro em lote usa RPC transacional no Postgres com validação explícita de autenticação, propriedade da adega e posições.
+- **Hospedagem:** serviço com HTTPS e banco gerenciado.
+- **Segurança e LGPD:** dados de conta privados; QR com token não adivinhável, revogável e não indexado; rate limit na busca; não expor segredos no front.
 
-Manter Next.js/TypeScript, Neon PostgreSQL/Auth/Data API com RLS e Vercel prevista. Separar interface e regras; adaptadores de catálogo, câmbio, preços e IA. Módulos: autenticação, adegas, vinhos, identificação, histórico, avaliações, finanças, mercado, assistente, 3D, compartilhamento e assinaturas. Nenhuma migration autorizada neste plano.
+### Entidades principais
+`User`, `Cellar`, `CellarMember`, `Invite`, `PublicShareToken`, `Shelf`, `ShelfRule`, `Position`, `Wine`, `WineGrape`, `Bottle`, `BottleMovement`, `BottleRemoval`, `BottleReview`, `WineExternalMatch`.
 
-3D mantém IDs e fallback 2D. Sommelier consulta dados autorizados, inicialmente somente leitura; escrita futura exige confirmação. Janela de consumo exige fonte. Compartilhamento exige papéis e links revogáveis; múltiplas adegas exigem migração segura; transferências são separadas. CSV exige prévia e validação. Assinaturas dependem de demanda e webhooks assinados; nunca armazenar cartões.
+## 9. Requisitos não funcionais e qualidade
+- Aplicativo utilizável sem API externa graças ao cadastro manual.
+- Busca externa com tratamento de falhas e alternativa de cadastro manual.
+- Operações concorrentes nas posições devem ser atômicas e auditáveis.
+- Índices para pesquisa de vinho/safra/posições e cache de consultas com TTL, respeitando os termos de fornecedor.
+- Backups/recuperação do banco e teste de restauração antes do beta externo.
+- Acessibilidade básica: contraste, rótulos para leitores de tela, navegação por toque e teclado.
+- Observabilidade: qualidade e latência da busca, taxa de correção, cobertura e posições duplicadas (meta zero).
 
-Cada fase exige implementação, migrations validadas quando cabíveis, testes, persistência real, segurança/RLS, UX mobile, erros, documentação e versionamento. Mocks não provam integração real. Antes do preview: testes, lint/build, backup/restauração, RLS, licenças, variáveis e custos. Produção exige aprovação específica após preview HTTPS, iPhone e testes não destrutivos.
+## 10. Critérios para liberar o beta
+- Busca textual nunca confirma silenciosamente um rótulo ambíguo; a ficha pode ser revisada antes do cadastro.
+- Cadastro de lote não gera duas garrafas na mesma posição, mesmo com requisições simultâneas.
+- Posição incompatível é bloqueada em operação estruturada; modo pequena/livre aceita posição livre.
+- Visitante não pode alterar nada mesmo manipulando chamadas HTTP.
+- Movimentos, retiradas e avaliações permanecem associados à garrafa correta.
 
-## Histórico de decisões
-13/11: proposta original previa foto e finanças; prova de imagem adiada por custo. 17/11: roadmap local registrou fases anteriores 1 e 2 como validadas no Neon, restringiu identificação à busca textual e excluiu finanças. 18/11: finanças retornam ao MVP, foto volta ao escopo e compartilhamento passa para depois. Roadmap preserva texto anterior integralmente; relatos históricos não são testes desta auditoria.
+## 11. Fora do MVP
+- Identificação por foto, OCR e reconhecimento visual (adiados por custo).
+- Preço pago, valor de mercado, conversão cambial e totais financeiros da coleção.
+- Transferências entre adegas, transporte e recebimento parcial.
+- Múltiplas adegas por proprietário na UI.
+- Marketplace, compra/venda, integração com e-commerce, carteira digital.
+- Recomendações sofisticadas de consumo, sensor de temperatura, sommelier conversacional.
+- Treinar do zero um modelo proprietário de visão ou copiar catálogo protegido de terceiros.
+
+## 12. Pontos abertos (não impedem a prova de conceito)
+- Definir, com usuários reais, o que caracteriza *adega pequena* e se essa classificação será por capacidade ou escolha explícita.
+- Negociar condições comerciais, retenção/caching e uso de dados dos provedores de catálogo.
+- Avaliar se compartilhamento de gerentes/familiares entra no beta inicial ou na entrega seguinte.
+
+## 13. Documentação de referência
+- WineAPI: https://wineapi.io/ ; https://wineapi.io/docs/ ; https://wineapi.io/terms

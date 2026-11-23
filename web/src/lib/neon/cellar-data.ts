@@ -81,7 +81,7 @@ export async function fetchCellarInventory(client: NeonBrowserClient, cellarId: 
     column: row.column_number,
   }));
 
-  const movements = (movementResult.data ?? []).map(m => ({ id: m.id as string, bottleId: m.bottle_id as string, wineId: wineByBottle.get(m.bottle_id) ?? "", type: m.movement_type as "move" | "remove", fromShelfId: m.from_shelf_id as string, fromRow: m.from_row as number, fromColumn: m.from_column as number, toShelfId: m.to_shelf_id as string | null, toRow: m.to_row as number | null, toColumn: m.to_column as number | null, reason: m.reason as string | null, createdAt: m.created_at as string }));
+  const movements = (movementResult.data ?? []).map(m => ({ id: m.id as string, bottleId: m.bottle_id as string, wineId: wineByBottle.get(m.bottle_id) ?? "", type: m.movement_type as "move" | "swap" | "remove", fromShelfId: m.from_shelf_id as string, fromRow: m.from_row as number, fromColumn: m.from_column as number, toShelfId: m.to_shelf_id as string | null, toRow: m.to_row as number | null, toColumn: m.to_column as number | null, reason: m.reason as string | null, actorId: m.actor_id as string | null, createdAt: m.created_at as string }));
   const reviews = (reviewResult.data ?? []).map(r => ({ bottleId: r.bottle_id as string, wineId: wineByBottle.get(r.bottle_id) ?? "", rating: r.rating as number | null, comment: r.comment as string | null }));
   return { shelves, wines, bottles, movements, reviews };
 }

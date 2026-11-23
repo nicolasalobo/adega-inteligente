@@ -37,10 +37,11 @@ try {
  await expectFailure('select public.swap_bottles($1,$2,$3)',[cellar,a,a],'23514');
  await c.query('select public.remove_bottle($1,$2,$3)',[cellar,a,'consumida']);
  await expectFailure('select public.remove_bottle($1,$2,$3)',[cellar,a,null],'23503');
- await c.query('insert into public.bottle_reviews(cellar_id,bottle_id,rating,comment) values($1,$2,4,$3),($1,$4,null,$5)',[cellar,a,'Ótima',b,'Apenas comentário']);
+ await c.query('insert into public.bottle_reviews(cellar_id,bottle_id,rating,comment) values($1,$2,4,$3),($1,$4,5,null)',[cellar,a,'Ótima',b]);
  await expectFailure('insert into public.bottle_reviews(cellar_id,bottle_id,rating) values($1,$2,6)',[cellar,a],'23514');
- assert.equal(Number((await c.query('select avg(rating) avg from public.bottle_reviews where cellar_id=$1 and bottle_id=any($2::uuid[])',[cellar,[a,b]])).rows[0].avg),4);
- const events=(await c.query('select movement_type,reason from public.bottle_movements where bottle_id=any($1::uuid[])',[ [a,b] ])).rows; assert.equal(events.length,4); assert.ok(events.some(e=>e.movement_type==='remove' && e.reason==='consumida'));
+ await expectFailure('insert into public.bottle_reviews(cellar_id,bottle_id,rating,comment) values($1,$2,null,$3)',[cellar,b,'Apenas comentário'],'23502');
+ assert.equal(Number((await c.query('select avg(rating) avg from public.bottle_reviews where cellar_id=$1 and bottle_id=any($2::uuid[])',[cellar,[a,b]])).rows[0].avg),4.5);
+ const events=(await c.query('select movement_type,reason from public.bottle_movements where bottle_id=any($1::uuid[])',[ [a,b] ])).rows; assert.equal(events.length,4); assert.equal(events.filter(e=>e.movement_type==='swap').length,2); assert.ok(events.some(e=>e.movement_type==='remove' && e.reason==='consumida'));
  await c.query("select set_config('request.jwt.claims',$1,true)",[JSON.stringify({sub:crypto.randomUUID()})]);
  await expectFailure(move,[cellar,b,shelf,1,3],'42501');
  console.log('Validados em transação: movimento, troca, retirada, histórico, regras, limites e avaliações; verificação de propriedade por JWT simulado. Alterações revertidas.');

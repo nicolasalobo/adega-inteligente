@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
@@ -57,12 +58,11 @@ try {
     GRANT SELECT ON neon_auth."user" TO authenticated;
   `);
 
-  for (let number = 1; number <= 7; number += 1) {
-    const migration = `/migrations/${String(number).padStart(4, "0")}_${[
-      "cellar_inventory.sql", "shelf_updates.sql", "secure_inventory_rpc.sql", "qualify_inventory_rpc_cellar.sql",
-      "bottle_history_reviews.sql", "phase3_validation.sql", "intelligent_wine_identification.sql",
-    ][number - 1]}`;
-    docker(["exec", container, "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres", "-f", migration]);
+  const migrationFiles = readdirSync(migrationDirectory)
+    .filter((file) => file.endsWith(".sql"))
+    .sort();
+  for (const migration of migrationFiles) {
+    docker(["exec", container, "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "-U", "postgres", "-d", "postgres", "-f", `/migrations/${migration}`]);
   }
 
   const eanChecks = psql(`
@@ -112,6 +112,91 @@ try {
   assert.equal(wineOneRetry, wineOne, "same vintage registration should reuse its wine association");
   assert.notEqual(wineOneOtherVintage, wineOne, "separate vintages must remain separate wines");
 
+  const initialPositions = psql(`
+    SELECT id, row_number, column_number FROM public.bottles
+    WHERE cellar_id='${cellarOne}' AND wine_id='${wineOne}' ORDER BY row_number, column_number;
+  `).stdout.split(/\r?\n/).filter(Boolean).map((line) => line.split("|"));
+  assert.equal(initialPositions.length, 2, "phase 3 fixture must contain two bottles of one vintage");
+  const firstBottle = initialPositions[0][0];
+  const secondBottle = initialPositions[1][0];
+  const secondVintageBottle = psql(`
+    SELECT id FROM public.bottles WHERE cellar_id='${cellarOne}' AND wine_id='${wineOneOtherVintage}';
+  `).stdout.trim();
+  assert.match(secondVintageBottle, /^[0-9a-f-]{36}$/i, "second vintage must have its own bottle fixture");
+  const authenticated = `BEGIN; SET LOCAL request.jwt.claim.sub='${accountOne}'; SET LOCAL ROLE authenticated; `;
+  const moveBottle = (bottleId, shelfId, row, column) =>
+    `SELECT public.move_bottle('${cellarOne}','${bottleId}','${shelfId}',${row},${column});`;
+
+  assert.match(psql(`${authenticated}${moveBottle(firstBottle, shelfOne, 1, 1)} COMMIT;`, { expectedFailure: true }).stderr, /current position/);
+  assert.match(psql(`${authenticated}${moveBottle(firstBottle, shelfOne, 1, 2)} COMMIT;`, { expectedFailure: true }).stderr, /duplicate key|unique/i);
+  assert.match(psql(`${authenticated}${moveBottle(firstBottle, shelfOne, 3, 1)} COMMIT;`, { expectedFailure: true }).stderr, /outside the shelf dimensions/);
+
+  psql(`${authenticated}${moveBottle(firstBottle, shelfOne, 2, 2)} COMMIT;`);
+  psql(`${authenticated}SELECT public.swap_bottles('${cellarOne}','${firstBottle}','${secondBottle}'); COMMIT;`);
+  const afterSwap = psql(`
+    SELECT count(*) FILTER (WHERE status='active'), count(DISTINCT (shelf_id,row_number,column_number))
+    FROM public.bottles WHERE cellar_id='${cellarOne}';
+    SELECT count(*) FROM public.bottle_movements WHERE cellar_id='${cellarOne}' AND movement_type='swap';
+  `).stdout.split(/\r?\n/).filter(Boolean);
+  assert.deepEqual(afterSwap, ["3|3", "2"], "swap must preserve every bottle/position and write two explicit events");
+
+  const structuredShelf = psql(`
+    INSERT INTO public.shelves(cellar_id,name,row_count,column_count,organization,rule_criterion,rule_axis,rule_values)
+    VALUES ('${cellarOne}','Uruguay only',1,1,'structured','country','row',ARRAY['Uruguay']) RETURNING id;
+  `).stdout.trim();
+  const structuredWine = psql(`
+    INSERT INTO public.wines(cellar_id,name,producer,country) VALUES ('${cellarOne}','Structured test','Producer','Uruguay') RETURNING id;
+  `).stdout.trim();
+  const structuredBottle = psql(`
+    INSERT INTO public.bottles(cellar_id,wine_id,shelf_id,row_number,column_number)
+    VALUES ('${cellarOne}','${structuredWine}','${structuredShelf}',1,1) RETURNING id;
+  `).stdout.trim();
+  assert.match(psql(`${authenticated}${moveBottle(secondBottle, structuredShelf, 1, 1)} COMMIT;`, { expectedFailure: true }).stderr, /rule/);
+  assert.match(psql(`${authenticated}SELECT public.swap_bottles('${cellarOne}','${secondBottle}','${structuredBottle}'); COMMIT;`, { expectedFailure: true }).stderr, /rule/);
+  const afterRejectedSwap = psql(`
+    SELECT count(*), count(DISTINCT (shelf_id,row_number,column_number)),
+      (SELECT count(*) FROM public.bottle_movements WHERE cellar_id='${cellarOne}')
+    FROM public.bottles WHERE cellar_id='${cellarOne}';
+  `).stdout.trim();
+  assert.equal(afterRejectedSwap, "4|4|3", "rejected structured swap must leave positions and history unchanged");
+
+  psql(`${authenticated}SELECT public.remove_bottle('${cellarOne}','${firstBottle}','consumida'); COMMIT;`);
+  psql(`${authenticated}
+    INSERT INTO public.bottles(cellar_id,wine_id,shelf_id,row_number,column_number)
+    VALUES ('${cellarOne}','${wineOne}','${shelfOne}',1,2);
+    INSERT INTO public.bottle_reviews(cellar_id,bottle_id,rating,comment)
+    VALUES ('${cellarOne}','${firstBottle}',4,'Muito bom'),('${cellarOne}','${secondBottle}',5,NULL),('${cellarOne}','${secondVintageBottle}',2,NULL);
+    COMMIT;
+  `);
+  assert.match(psql(`${authenticated}INSERT INTO public.bottle_reviews(cellar_id,bottle_id,rating,comment) VALUES ('${cellarOne}','${secondBottle}',NULL,'somente comentário'); COMMIT;`, { expectedFailure: true }).stderr, /null value.*rating/i);
+  const averages = psql(`
+    SELECT w.vintage, avg(r.rating)::numeric FROM public.bottle_reviews r
+    JOIN public.bottles b ON b.id=r.bottle_id JOIN public.wines w ON w.id=b.wine_id
+    WHERE r.cellar_id='${cellarOne}' GROUP BY w.vintage ORDER BY w.vintage;
+  `).stdout.split(/\r?\n/).filter(Boolean);
+  assert.deepEqual(averages, ["2020|4.5", "2021|2"], "reviews must average by wine vintage");
+  psql(`${authenticated}SELECT public.remove_bottle('${cellarOne}','${secondVintageBottle}',NULL); COMMIT;`);
+  const optionalRemoval = psql(`
+    SELECT b.status, b.removal_reason IS NULL,
+      EXISTS (SELECT 1 FROM public.bottle_movements m WHERE m.bottle_id=b.id AND m.movement_type='remove' AND m.reason IS NULL AND m.actor_id='${accountOne}')
+    FROM public.bottles b WHERE b.id='${secondVintageBottle}';
+  `).stdout.trim();
+  assert.equal(optionalRemoval, "removed|t|t", "removal reason must be optional while actor and history remain");
+  const history = psql(`
+    SELECT count(*), count(*) FILTER (WHERE movement_type='remove' AND reason='consumida' AND actor_id='${accountOne}')
+    FROM public.bottle_movements WHERE cellar_id='${cellarOne}';
+  `).stdout.trim();
+  assert.equal(history, "5|1", "move, swap and removals must retain history and responsible user");
+  assert.match(psql(`${authenticated}SELECT public.move_bottle('${cellarTwo}','${firstBottle}','${shelfTwo}',1,1); COMMIT;`, { expectedFailure: true }).stderr, /42501|Cellar not found/);
+  const hiddenPhase3 = psql(`
+    BEGIN; SET LOCAL request.jwt.claim.sub='${accountTwo}'; SET LOCAL ROLE authenticated;
+    SELECT (SELECT count(*) FROM public.bottle_movements WHERE cellar_id='${cellarOne}') || '|' ||
+      (SELECT count(*) FROM public.bottle_reviews WHERE cellar_id='${cellarOne}');
+    COMMIT;
+  `).stdout.trim();
+  assert.equal(hiddenPhase3, "0|0", "another owner must not read movement history or reviews");
+  assert.match(psql(`BEGIN; SET LOCAL request.jwt.claim.sub='${accountTwo}'; SET LOCAL ROLE authenticated; INSERT INTO public.bottle_reviews(cellar_id,bottle_id,rating) VALUES ('${cellarOne}','${secondBottle}',5); COMMIT;`, { expectedFailure: true }).stderr, /row-level security/i);
+
   const visibleOne = psql(`BEGIN; SET LOCAL request.jwt.claim.sub='${accountOne}'; SET LOCAL ROLE authenticated; SELECT count(*) FROM public.wine_barcodes WHERE ean13='7892500022445'; COMMIT;`).stdout;
   const visibleTwo = psql(`BEGIN; SET LOCAL request.jwt.claim.sub='${accountTwo}'; SET LOCAL ROLE authenticated; SELECT count(*) FROM public.wine_barcodes WHERE ean13='7892500022445'; COMMIT;`).stdout;
   const hiddenTwoFromOne = psql(`BEGIN; SET LOCAL request.jwt.claim.sub='${accountOne}'; SET LOCAL ROLE authenticated; SELECT count(*) FROM public.wine_barcodes WHERE wine_id='${wineTwo}'; COMMIT;`).stdout;
@@ -136,7 +221,7 @@ try {
   assert.equal(aiQuota.filter((value) => value === "t").length, 5);
   assert.equal(aiQuota.at(-1), "f");
 
-  console.log("Migrations 0001–0007 instaladas em PostgreSQL 16 descartável; EAN, RPC atômico, RLS de associação entre duas contas e quotas 30/5/5 aprovados. Neon Auth foi simulado localmente: isto não substitui a validação em branch Neon.");
+  console.log("Migrations 0001–0009 instaladas em PostgreSQL 16 descartável; EAN, RPC atômico, RLS, quotas, movimentos, trocas, retiradas, histórico e médias por safra aprovados. Neon Auth foi simulado localmente: isto não substitui a validação em branch Neon.");
 } finally {
   docker(["rm", "--force", container], { allowFailure: true });
 }

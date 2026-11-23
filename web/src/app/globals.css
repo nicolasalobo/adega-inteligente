@@ -506,6 +506,20 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .history-item small { color:#8b8076; margin-top:5px; }
 .history-item p { margin:8px 0 0; font-size:13px; overflow-wrap:anywhere; }
 @media (max-width: 600px) { .history-item { align-items:flex-start; flex-direction:column; } }
+.review-modal { width:min(100%, 460px); }
+.review-rating { display:grid; justify-items:start; gap:9px; margin:4px 0 20px; padding:0; border:0; }
+.review-rating legend { margin-bottom:10px; color:#554b42; font-size:12px; font-weight:650; }
+.review-rating legend i { color:#a75d52; font-style:normal; }
+.review-stars { display:flex; gap:5px; }
+.review-star { display:grid; width:40px; height:40px; place-items:center; padding:0; border:1px solid #e9e2d8; border-radius:8px; background:#fffefa; color:#b19c7c; cursor:pointer; }
+.review-star:hover, .review-star.selected { border-color:#c8a75f; background:#fbf5e7; color:#a88022; }
+.review-star:focus-visible { outline:2px solid #8b6d57; outline-offset:2px; }
+.review-star:disabled { cursor:default; opacity:.65; }
+.review-rating-label { color:#897d70; font-size:11px; }
+.review-comment { margin-bottom:4px; }
+.review-comment textarea { width:100%; min-height:100px; resize:vertical; padding:10px 12px; border:1px solid #e7dfd4; border-radius:8px; background:#fffefa; color:#403832; font:inherit; font-size:12px; }
+.review-comment textarea:focus { border-color:#9b7471; outline:2px solid #9b747122; }
+.review-comment span small { margin-left:5px; color:#9a9084; font-size:10px; font-weight:400; }
 .identification-panel { display:grid; gap:8px; margin:0 0 16px; padding:12px; border:1px solid #e9e2d8; border-radius:9px; background:#fbfaf7; }
 .identification-heading { display:flex; align-items:center; gap:8px; color:#713641; }
 .identification-heading > div { display:grid; gap:3px; }
