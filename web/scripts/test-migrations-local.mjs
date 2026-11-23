@@ -174,7 +174,11 @@ try {
     JOIN public.bottles b ON b.id=r.bottle_id JOIN public.wines w ON w.id=b.wine_id
     WHERE r.cellar_id='${cellarOne}' GROUP BY w.vintage ORDER BY w.vintage;
   `).stdout.split(/\r?\n/).filter(Boolean);
-  assert.deepEqual(averages, ["2020|4.5", "2021|2"], "reviews must average by wine vintage");
+  const parsedAverages = averages.map((line) => {
+    const [vintage, average] = line.split("|");
+    return [vintage, Number(average)];
+  });
+  assert.deepEqual(parsedAverages, [["2020", 4.5], ["2021", 2]], "reviews must average by wine vintage");
   psql(`${authenticated}SELECT public.remove_bottle('${cellarOne}','${secondVintageBottle}',NULL); COMMIT;`);
   const optionalRemoval = psql(`
     SELECT b.status, b.removal_reason IS NULL,

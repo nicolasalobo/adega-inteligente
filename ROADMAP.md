@@ -1,6 +1,6 @@
 # Roadmap de desenvolvimento — Adega pessoal
 
-**Versão:** 1.4 | **Status:** Fases 1 e 2 concluídas; Fase 3 em validação | **Data:** 23/11/2026
+**Versão:** 1.5 | **Status:** Fases 1, 2 e 3 concluídas e validadas; Fase 4 não iniciada | **Data:** 23/11/2026
 
 > As fases são sequenciais, mas sem promessa de prazo. Avançar por critérios de aceite; não adicionar funcionalidades paralelas antes de validar o núcleo.
 
@@ -46,13 +46,14 @@
 **Saída:** busca textual → candidato escolhido → ficha revisada → posições → garrafas cadastradas e persistidas.
 
 ## Fase 3 — Histórico e avaliações das garrafas
-**Status:** fluxos e tela implementados; migrations 0008–0009 e invariantes do banco validados em branch Neon isolada; interface local validada. E2E remoto autenticado no Preview ainda pendente.
+**Status:** concluída. Fluxos completos verificados na interface do Preview com Neon Auth/Data API em branch descartável; migrations 0008–0009 conferidas no Neon e migrations 0001–0009 reaplicadas em PostgreSQL 16 local descartável.
 - [x] Mover garrafas entre posições e trocar ocupantes, respeitando as regras das prateleiras e registrando origem/destino.
 - [x] Retirar garrafas, liberar a posição e registrar data, responsável e motivo opcional.
 - [x] Consultar movimentações, trocas e retiradas no histórico.
 - [x] Avaliar cada garrafa com 1 a 5 estrelas e comentário opcional; calcular a média por vinho e safra.
 - [x] Aplicar e verificar as migrations 0008–0009 em uma branch Neon isolada; testar persistência, conflitos, regras e autorização do proprietário.
-- [ ] Validar os fluxos completos na interface conectada ao Neon e no Preview.
+- [x] Validar os fluxos completos na interface conectada ao Neon e no Preview, incluindo persistência após reload.
+- [x] Testar RLS com duas contas Neon Auth e duas movimentações concorrentes disputando a mesma posição.
 
 **Saída:** inventário com histórico de movimentações, retiradas e avaliações.
 

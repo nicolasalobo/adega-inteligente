@@ -14,6 +14,7 @@
     "db:seed": "node scripts/seed-neon.mjs",
     "test:phase3": "node scripts/test-phase3.mjs",
     "test:phase3:ui-local": "node scripts/test-phase3-ui-local.mjs",
+    "test:phase3:preview": "node scripts/test-phase3-preview.mjs",
     "test:auth-rls": "node scripts/test-auth-rls.mjs",
     "test:concurrency": "node scripts/test-concurrency.mjs",
     "test:ui-e2e": "node scripts/test-ui-e2e.mjs",

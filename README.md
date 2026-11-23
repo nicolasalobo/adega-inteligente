@@ -10,9 +10,9 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Plano de execução
 
-As Fases 1 e 2 estão concluídas: adega visual, cadastro manual, busca textual e scanner existente. A Fase 3 (movimentações, retiradas, histórico e avaliações) está implementada e em validação.
+As Fases 1 e 2 estão concluídas. A Fase 3 (movimentações, retiradas, histórico e avaliações) foi validada ponta a ponta na interface publicada e na branch Neon descartável; veja as evidências em [TESTES_APIS.md](TESTES_APIS.md). A Fase 4 permanece pendente e não foi iniciada.
 
-Próximas etapas: concluir a validação da Fase 3 → compartilhamento com a família → hardening.
+O próximo avanço depende de decisão explícita sobre a Fase 4; nenhuma funcionalidade dessa fase faz parte desta entrega.
 
 ## Princípios do MVP
 
