@@ -10,17 +10,16 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Plano de execução
 
-O trabalho começa pela **Fase 1 — Base do projeto e adega visual mínima**, com cadastro manual e sem depender de serviços externos. A prova de conceito de reconhecimento (Fase 0) está adiada; será retomada depois da base manual e antes de implementar o cadastro por foto.
+As Fases 1 e 2 estão concluídas. A Fase 3 (movimentações, retiradas, histórico e avaliações) foi validada ponta a ponta na interface publicada e na branch Neon descartável; veja as evidências em [TESTES_APIS.md](TESTES_APIS.md). A Fase 4 permanece pendente e não foi iniciada.
 
-Ordem atual: adega visual e cadastro manual → prova de conceito de reconhecimento → cadastro por foto → histórico e preços → QR e família → hardening e expansão.
+O próximo avanço depende de decisão explícita sobre a Fase 4; nenhuma funcionalidade dessa fase faz parte desta entrega.
 
 ## Princípios do MVP
 
 - Uma adega por conta proprietária na interface inicial.
 - Cada garrafa ocupa uma posição física exclusiva.
 - Cadastro manual disponível mesmo quando integrações externas falham.
-- Identificação por foto sempre pode ser revisada; dados ausentes permanecem desconhecidos.
-- Preços e estimativas mostram fonte, safra e incerteza com clareza.
+- Busca textual sugere candidatos; a pessoa revisa os dados antes de cadastrar.
 
 ## Desenvolvimento
 
