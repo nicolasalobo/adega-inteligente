@@ -11,8 +11,8 @@ const productionBranch = process.env.TEST_NEON_PRODUCTION_BRANCH_ID;
 const expectedEndpoint = process.env.TEST_NEON_ENDPOINT_ID;
 
 if (!previewUrl || !publicNeonUrl) throw new Error("Defina TEST_PREVIEW_URL e TEST_PUBLIC_NEON_URL.");
-if (expectedBranch !== "br-fancy-mode-be8k6bgd") throw new Error("TEST_NEON_BRANCH_ID não corresponde à branch Neon descartável informada.");
-if (!productionBranch || productionBranch === expectedBranch) throw new Error("Informe o ID distinto da branch de produção para confirmar o isolamento.");
+if (expectedBranch !== "br-floral-star-bep9s9qu") throw new Error("TEST_NEON_BRANCH_ID não corresponde à branch Neon descartável atual.");
+if (productionBranch !== "br-bold-band-bekpj4x6" || productionBranch === expectedBranch) throw new Error("TEST_NEON_PRODUCTION_BRANCH_ID não corresponde à branch production do projeto Neon.");
 
 const publicUrl = new URL(publicNeonUrl);
 const endpointId = publicUrl.hostname.split(".")[0];
