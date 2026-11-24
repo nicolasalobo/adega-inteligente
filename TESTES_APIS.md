@@ -1,7 +1,16 @@
 # Guia prático para testar APIs de vinhos
 
-**Data das informações:** 13/11/2026. Preços e condições podem mudar.  
-**Situação atual (17/11/2026):** fluxo ponta a ponta concluído no app local autenticado: cadastro manual, busca WineAPI, revisão de ficha, cadastro em lote, reuso da ficha existente e persistência após recarregar. Os registros temporários de validação foram removidos. Reconhecimento por foto está fora do escopo das fases 1 e 2 por custo. Preços e cotações de vinhos permanecem apenas como informação de pesquisa sobre APIs e não fazem parte do produto.
+**Data da revisão de provedores:** 24/11/2026. Preços e condições podem mudar.
+**Situação:** as Fases 1–3 estão integradas em `main`. A validação da Fase 3 no PR #9 foi concluída antes do merge; este registro é histórico e não foi repetido durante a integração. A gestão financeira começa por preço pago manual, sem APIs pagas; cotações automatizadas e reconhecimento por foto seguem planejados. Esta documentação não ativa integrações pagas. Proposta, limites e estimativas estão em [PROPOSTA_TECNICA.md](PROPOSTA_TECNICA.md).
+
+## Decisão atualizada — 24/11/2026
+- O scanner EAN-13 já implementado permanece a primeira opção. Pode usar catálogo e pesquisa web para localizar candidatos, com IA apenas como apoio à ordenação/explicação; EAN sozinho não identifica safra e nenhuma sugestão é salva sem revisão humana.
+- Foto do rótulo é uma alternativa complementar quando EAN falha ou é ambíguo. Avaliar produtor, nome, safra, uva e região por proveniência/campo; não inventar campo ilegível nem confirmar safra incerta automaticamente.
+- Cada nova compra exige preço pago por garrafa na moeda original. Usar conversão histórica por data da compra e fonte/taxa; se faltar data ou taxa, aceitar equivalente em BRL informado manualmente e marcar como tal. Todos os totais são em BRL.
+- Cotações de mercado atualizam semanalmente, com atualização manual. Sem cotação, permitir estimativa manual identificada; substituir o valor atual quando surgir cotação confiável da mesma safra e formato, preservando histórico. Outra safra é sempre estimada e identificada.
+- O resumo separa valor confirmado, estimado e sem cotação; preço pago e valor de mercado têm privacidade independente.
+- O benchmark de duas fotos e buscas reais existentes não demonstra precisão geral. Não escolher fornecedor até avaliar 30–50 vinhos, custo real e cobertura brasileira.
+- Seguem desligados os provedores comerciais e os testes que exigem cobrança. Os preços informados no documento de proposta são estimativas públicas de 23/11/2026, não uma autorização de contratação.
 
 ## Atualização — identificação EAN (18/11/2026)
 
@@ -29,16 +38,31 @@ O teste Neon também encontrou um defeito de cliente server-side: `@neon/neon-js
 
 Os registros de teste permanecem apenas na branch descartável e expiram junto com ela. O teste não valida chamadas comerciais externas. WineAPI, Brave e OpenAI permanecem desligadas; Open Food Facts foi consultado ao vivo anteriormente e retornou 404 para ambos os EANs.
 
-## Validação da Fase 3 — 23/11/2026
+## Validação da Fase 3 / PR #9 — atualização 24/11/2026
 
-- As migrations `0008_require_bottle_review_rating.sql` e `0009_distinguish_swap_history.sql` já estavam aplicadas à branch temporária `codex-fase3-validation-20261123` (`br-fancy-mode-be8k6bgd`) do projeto Neon `adega-fase1-validacao`. O SQL Editor confirmou `neon.branch_id` correto, 9 migrations registradas, `bottle_reviews.rating NOT NULL` e o tipo de histórico `swap`. A branch expira em 24/11/2026 às 10:37 BRT. Nenhuma migration ou escrita foi feita em produção, e `.env.local` não foi usado para conexões de teste.
-- `npm run test:migrations:local` aplicou em PostgreSQL 16 descartável as migrations 0001–0009 e aprovou EAN, cadastro/RPC atômico, regras e dimensões, unicidade, movimento, troca, retirada, histórico, ratings/médias por safra e RLS simulado. O daemon Docker ficou disponível; o teste foi executado e o container temporário foi removido.
+O PR #9 foi integrado em `main` em 24/11/2026 (merge `597b4e3`). As migrations 0001–0009 já estavam aplicadas e verificadas na branch Neon descartável `codex-fase3-revalidacao-20261124` (expira em 25/11/2026 às 18:22 BRT); o merge não reaplicou migrations. A Vercel estava configurada em `Only build pre-production`: `VERCEL_ENV=preview` permite build e produção é ignorada. O registro de deployment da `main` ficou `CANCELED`; nenhum deployment foi publicado em produção. Previews seguem ativos. Esta configuração é temporária e reversível.
+
+- As migrations `0008_require_bottle_review_rating.sql` e `0009_distinguish_swap_history.sql` foram verificadas na branch temporária `codex-fase3-validation-20261123` (`br-fancy-mode-be8k6bgd`) do projeto Neon `adega-fase1-validacao`. O SQL Editor confirmou `neon.branch_id` correto, 9 migrations registradas, `bottle_reviews.rating NOT NULL` e o tipo de histórico `swap`. A expiração estava agendada para 24/11/2026 às 10:37 BRT; esse horário já passou e o status atual da branch não pôde ser confirmado nesta revisão. Para qualquer nova validação remota, criar branch Neon isolada nova e conferir `neon.branch_id` antes de escrever. Nenhuma migration ou escrita foi feita em produção, e `.env.local` não foi usado para conexões de teste.
+- `npm run test:migrations:local` aplicou em PostgreSQL 16 descartável as migrations 0001–0009 e aprovou EAN, cadastro/RPC atômico, regras e dimensões, unicidade, movimento, troca, retirada, histórico, ratings/médias por safra e RLS simulado. Executado novamente em 24/11; passou e removeu o container temporário. O daemon Docker foi iniciado localmente para esse teste.
+- `npm run lint` e `npm run build` passaram em 24/11 no código da Fase 3 do PR #9.
+- O head `7c5fdde7ed72c3f4446750a77cafbdd9550112f1` do PR #9 registra como check externo apenas `Vercel Preview Comments`, concluído com sucesso e sem feedback pendente; não há check de CI automatizado para lint, build ou migrations. Os três foram executados localmente nesta revisão.
 - `npm run test:phase3:preview` passou na interface publicada (`adega-inteligente-nhsx8wu08…`, deployment `4d2c4ff`) conectada ao Neon descartável. O estado funcional em `web/src` é o mesmo do head atual do PR; os commits posteriores nesse intervalo alteram documentação/testes, não o app.
 - O Preview atualizado no commit `ed79638` também ficou `READY`, mas repetir o cadastro de conta nele retornou `INVALID_CALLBACK_URL`/`INVALID_ORIGIN`: o hostname novo ainda não consta na allowlist de Auth da branch Neon. O deployment anterior (`4d2c4ff`) usa a origem já autorizada e passou o E2E integral; `web/src` é idêntico entre os dois. Uma repetição no hostname novo exige acrescentá-lo à allowlist da branch Neon descartável. Os previews dos commits documentais `b88ae77` (`k5bfwwjvz…`) e `a2daef3` (`r7zexnsuj…`) ficaram `READY`; a suíte não foi repetida neles porque esses commits só alteram documentação e a allowlist segue sem o alias estável da branch.
 - Resultado por fluxo no Preview: cadastro de seis garrafas em duas safras; movimento válido persistido; movimento para categoria incompatível recusado sem evento; troca com duas posições invertidas e dois eventos `swap`; notas 1–5 com médias 3,0/5 (cinco notas da safra 2022) e 5,0/5 (uma da safra 2021); duas RPCs simultâneas disputando uma posição, com uma aceita e uma recusada; retiradas com e sem motivo, data, responsável e slot livre; reutilização do slot; histórico de seis eventos visível depois de recarregar.
 - RLS foi testado com duas contas Neon Auth reais: a segunda conta não leu a adega, prateleiras, vinhos, garrafas, avaliações nem histórico da primeira; tentativa cruzada de movimento e avaliação foi recusada. O Data API confirmou `actor_id`, `removed_at`, motivos opcionais, ratings e posições persistidas. O E2E removeu suas adegas/dados no `finally`; contas e um conjunto de dados de uma execução manual anterior permanecem somente na branch descartável até sua expiração.
-- Evidência da interface: `web/test-results/phase3-preview-history.png` (histórico com movimentos, troca, retiradas, responsável, motivo e avaliações). Também passaram `npm run test:phase3:ui-local`, `npm run test:identification` (7/7), `npm run test:ui-identification-local`, `npm run lint` e `npm run build`. Cadastro manual, scanner EAN-13/cancelamento de câmera e layout mobile continuaram cobertos sem chamadas externas.
-- A validação remota usou a implantação Preview publicada; a única dificuldade foi Deployment Protection e foi resolvida com link de compartilhamento temporário de 23 horas, sem reduzir a proteção do projeto. Nenhuma alteração foi publicada em produção. A Fase 4 não foi iniciada.
+- A validação local de UI também cobriu histórico com movimentos, troca, retiradas, responsável, motivo e avaliações. No histórico anterior passaram `npm run test:phase3:ui-local`, `npm run test:identification` (7/7) e `npm run test:ui-identification-local`; cadastro manual, scanner EAN-13/cancelamento de câmera e layout mobile continuaram cobertos sem chamadas externas.
+- A validação remota usou a implantação Preview publicada; a única dificuldade foi Deployment Protection e foi resolvida com link de compartilhamento temporário de 23 horas, sem reduzir a proteção do projeto. Nenhuma alteração foi publicada em produção. A Fase 4 (gestão financeira) não foi iniciada.
+
+### Preflight e recuperação para integração em produção
+
+Não executar as migrations diretamente em produção antes de completar todos os passos abaixo:
+
+1. Registrar um ponto de restauração/backup Neon e provar a restauração em uma branch isolada; confirmar projeto, branch e `neon.branch_id` pelo console/SQL, sem confiar apenas em variáveis locais.
+2. Comparar `schema_migrations` e o schema do destino com o esperado: migrations 0001–0007 presentes na ordem e constraints/tabelas usadas por 0008–0009 existentes. Antes da 0008, verificar `SELECT count(*) FROM bottle_reviews WHERE rating IS NULL;`; o resultado precisa ser zero, pois a constraint restaura `rating NOT NULL` e bloqueia avaliações antigas apenas com comentário. Resolver dados somente com decisão de produto auditada, nunca atribuir nota arbitrária.
+3. Aplicar 0008 e depois 0009 separadamente pelo runner versionado, conferir commit/ledger e constraints após cada uma, e fazer smoke test autenticado de nota, movimento, troca e histórico. Parar imediatamente em qualquer divergência ou erro.
+4. Se falhar antes de seguir, usar o ponto de restauração/PITR para recuperar a branch-alvo e validar a recuperação; não improvisar migration reversa, pois 0008 impõe requisito de dados e 0009 altera constraints/tipo de movimento. Repetir em ambiente isolado antes de uma nova janela de produção.
+
+Este procedimento é um gate futuro, não autorização para aplicar migrations. A revisão atual não acessou nem alterou produção.
 
 ## Resultado inicial da busca textual WineAPI
 - Quara Estate Malbec 2016: a busca trouxe Quara Estate, Malbec, Cafayate. A ficha carregou Argentina e Cafayate, mas não informou safra nem uvas; portanto, não confirma que seja a safra 2016.
@@ -46,11 +70,15 @@ Os registros de teste permanecem apenas na branch descartável e expiram junto c
 - Bellevue Bordeaux 2020: a busca trouxe vários candidatos, incluindo Chateau Bellevue La Randee e Chateau Bellevue Lugagnac Blanc. Nenhum foi selecionado, pois o nome sozinho não confirma a identidade do rótulo.
 - A busca funciona como localizador de candidatos. A ficha permanece editável e a pessoa precisa confirmar a identidade antes de cadastrar. No teste E2E, duas unidades do mesmo vinho foram agrupadas na ficha existente; a adega foi recarregada para confirmar persistência e os dados de teste foram removidos depois.
 
-## Resumo da decisão
-- **WineAPI:** começar por busca de nome, ficha de vinho e preços. O plano Free oferece 100 requisições/dia para uso pessoal **não comercial**; identificação por foto é anunciada no Pro (US$ 100/mês). Preços têm cobertura limitada, e um vinho encontrado pode não ter cotação.
-- **InVintory Partner:** API especializada com reconhecimento via foto, catálogo divulgado de 1,5M+ rótulos e documentação de `scan-image`; exige acesso de parceiro/contrato, preço mediante consulta.
-- **TinEye WineEngine:** sandbox usa biblioteca fixa de rótulos. Seu uso real exige que **você forneça sua própria coleção de imagens de rótulos**; não entrega catálogo de preços pronto. Starter anunciado a US$ 200/mês. Não contratar antes de justificar.
-- **OpenAI visão:** extrai campos do rótulo, mas NÃO confirma sozinho que o produto existe, que a mistura de uvas é correta ou que o preço encontrado corresponde à mesma safra.
+## Resumo de alternativas
+- **WineAPI:** plano Free (100 req./dia) é somente pessoal/não comercial; Supporter custa US$ 25/mês e declara licença empresarial; Pro custa US$ 100/mês, inclui identificação por foto e histórico de preços limitado. O fornecedor adverte que preços podem faltar ou ser antigos, sem garantia de oferta atual. Veja as estimativas detalhadas na [proposta](PROPOSTA_TECNICA.md).
+- **InVintory Partner:** API de reconhecimento por foto com campos de produtor, safra e região e catálogo divulgado de 1,5M+ rótulos; requer parceria e preço sob consulta. `score` não é probabilidade calibrada.
+- **TinEye WineEngine:** reconhecimento especializado que anuncia identificação de rótulo, safra e variedade; Starter publicado a US$ 200/mês inclui 1.000 buscas/mês e até 5.000 imagens, com excedentes publicados. Requer uma coleção própria de imagens de referência. Não publica benchmark independente; os detalhes estão na [proposta](PROPOSTA_TECNICA.md).
+- **Google Cloud Vision:** OCR de US$ 0 até 1.000 unidades/mês e US$ 1,50/1.000 depois; extrai texto, não identidade do vinho.
+- **Gemini/OpenAI visão:** custo por tokens/resolução, baixo em uma imagem pequena, mas não são catálogos de vinhos; podem extrair campos/candidatos e ainda exigem fonte verificável e revisão.
+- **Wine-Searcher API:** API de comerciantes/preços; preço e condições de trial atuais precisam de cotação do fornecedor. Um formulário público de 2018 listava US$ 250–260/mês para 500 chamadas/dia, apenas referência histórica, não preço atual. Verificar cobertura brasileira e safra/formato exatos antes de selecionar.
+- **Brave Search API:** US$ 5/1.000 buscas e US$ 5 em créditos mensais conforme a página pública; serve para localizar páginas pelo EAN, não confirma preço sozinho. **Barcode Lookup** é API genérica de EAN/UPC; validar preço atual e cobertura de vinhos/safras no Brasil antes de considerar.
+- **Precisão:** nenhum destes fornecedores apresenta benchmark independente comparável para o conjunto desta adega. O conjunto atual de duas imagens é insuficiente; nenhum score apresentado deve ser exibido como percentual de acerto.
 
 ## As 2 imagens reais do teste
 - `amostras/quara_2016.jpeg` — Quara Estate Malbec, 2016, Vale de Cafayate, Argentina, 750ml, 12,5%. Valores visíveis no rótulo.
@@ -148,9 +176,3 @@ Saídas em `resultados/` para comparação. Os comandos e caminhos são equivale
 - InVintory: https://invintory.com/api/
 - WineEngine: https://services.tineye.com/WineEngine
 - OpenAI: https://developers.openai.com/api/docs/guides/images-vision
-
-### Revalidação Neon — 24/11/2026
-
-Na branch descartável `codex-fase3-revalidacao-20261124` (`br-floral-star-bep9s9qu`, projeto `soft-mode-37622581`), a falha anteriormente atribuída à migration 0007 foi reproduzida: o histórico do SQL Editor havia truncado a consulta após `grant execute on function public.consume_photo_identification_quota`. O PostgreSQL retornou `ERROR: syntax error at end of input (SQLSTATE 42601)` nessa instrução incompleta. A transação foi revertida. O limite exibido pelo editor se refere ao armazenamento no histórico; reutilizar uma consulta recuperada do histórico pode executar SQL incompleto. Não houve evidência de defeito no arquivo 0007 ou de falta de privilégios.
-
-A consulta foi completada e executada com guardas de projeto, branch e ledger, em transação com registro da versão; 0008 e 0009 foram aplicadas em transações separadas. O ledger confirmou 0001–0009. No PostgreSQL Neon 18.7, conferimos as seis funções de identificação, EAN válido, RLS nas duas novas tabelas, uma policy de leitura, SELECT de barcode permitido e INSERT direto e leitura de quota negados a `authenticated`; também `rating NOT NULL`, constraint com `swap` e função de troca atualizada. O teste local anterior usava PostgreSQL 16 com Auth simulado. Esta verificação estrutural não substitui o E2E com Neon Auth e duas contas na branch atual. Não se alteraram migrations históricas nem permissões.

@@ -8,7 +8,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-O `.env.example` já aponta para o banco compartilhado do projeto. Use a mesma conta em qualquer computador para ver a mesma adega. Sem `NEXT_PUBLIC_NEON_DATABASE_URL`, a aplicação abre uma demonstração salva apenas neste navegador.
+O `.env.example` aponta para o branch Neon persistente `fase4-dev-persistente-20261124` (`br-falling-base-beux9a0a`), separado da produção e independente do branch descartável. Neon Auth já permite `localhost`; use contas sintéticas e conteúdo fictício. Sem `NEXT_PUBLIC_NEON_DATABASE_URL`, a aplicação abre uma demonstração salva apenas neste navegador.
 
 ## Busca de vinhos na WineAPI
 
@@ -43,9 +43,9 @@ Fontes de referência dos códigos testados: EAN `7892500022445` aparece como Vi
 
 ## Banco e autenticação
 
-O projeto usa Neon Postgres, Neon Auth e a Data API. O cadastro cria a adega e a primeira prateleira; login e consultas usam o endereço público do endpoint, sem senha do banco no navegador. O Postgres aplica RLS para separar os dados por proprietário.
+O projeto usa Neon Postgres, Neon Auth e a Data API. O cadastro cria a adega e a primeira prateleira; login e consultas usam o endereço público do endpoint, sem senha do banco no navegador. O Postgres aplica RLS para separar os dados por proprietário. O branch de desenvolvimento é Free, persistente (`Expires: Never`), tem as migrations 0001–0009 e começa sem registros nas tabelas da aplicação.
 
-A estrutura já está aplicada no banco compartilhado. Para aplicar migrations novas, copie a connection string direta do botão **Connect** no Neon para `DATABASE_URL` dentro de `.env.local` e execute:
+A estrutura 0001–0009 já está aplicada no branch de desenvolvimento. Não reaplique essas migrations. Para migrations futuras ou seed, copie a connection string direta do botão **Connect** no branch `fase4-dev-persistente-20261124` para `DATABASE_URL` dentro de `.env.local`, confira o ID `br-falling-base-beux9a0a` no console e só então execute:
 
 ```powershell
 npm run db:migrate
@@ -61,7 +61,7 @@ Depois de criar uma conta no app, a seed opcional adiciona sete rótulos e 26 ga
 npm run db:seed
 ```
 
-Como o banco é compartilhado na nuvem, os dados aparecem no notebook e neste PC após entrar na mesma conta. Não é necessário instalar Docker.
+O branch é compartilhado somente como ambiente de desenvolvimento; não cadastre dados reais. Previews e o app local usam o endpoint público do mesmo branch, e a produção permanece em branch separada. Não é necessário instalar Docker para o uso normal do app.
 
 ## Histórico e avaliações
 

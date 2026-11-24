@@ -1,26 +1,25 @@
-# Roadmap de desenvolvimento — Adega pessoal
+# Roadmap de desenvolvimento — Adega Inteligente
 
-**Versão:** 1.5 | **Status:** Fases 1, 2 e 3 concluídas e validadas; Fase 4 não iniciada | **Data:** 23/11/2026
+**Versão:** 1.8 | **Status:** Fases 1–3 integradas; Fase 0 de descoberta atualizada; Fases 4–7 pendentes | **Data:** 24/11/2026
 
-> As fases são sequenciais, mas sem promessa de prazo. Avançar por critérios de aceite; não adicionar funcionalidades paralelas antes de validar o núcleo.
+> O PR #9 foi integrado em `main` (commit `597b4e3`). A publicação em produção permanece desativada temporariamente na Vercel; Previews continuam habilitados. Esta revisão não implementa nem ativa integrações pagas.
 
-## Fase 0 — Prova de conceito de reconhecimento por imagem (ADIADA)
-**Status:** fora do escopo atual por custo da API. Não bloqueia a base manual da Fase 1 nem a busca textual da Fase 2. Só retomar se o projeto decidir voltar a identificar rótulos por foto.
-**Atualização (17/11/2026):** a Fase 2 foi redefinida para busca textual; reconhecimento por foto não será implementado nesta etapa.
-**Meta:** descobrir se o pipeline encontra vinhos reais e safras com precisão e custo aceitáveis.
+## Fase 0 — Descoberta de EAN, foto e cotações
+**Status:** proposta e custos documentados; benchmark representativo e decisão final de fornecedor pendentes. Esta fase não exige contratação nem chamadas pagas.
 
-- [ ] Criar credencial gratuita WineAPI (busca textual; somente uso pessoal no plano Free).
-- [ ] Testar busca por nome para Quara Estate Malbec 2016 e Bellevue Bordeaux 2020.
-- [ ] Solicitar chave de avaliação/acesso à InVintory para reconhecimento por imagem.
-- [ ] Testar extração visual com OpenAI e comparar com catálogo (sem supor verificação por IA).
-- [ ] Montar conjunto de 30–50 fotos próprias de regiões/safras variadas.
-- [ ] Registrar em planilha: provedor, top-1/top-3, safra, uva, país, preço, custo, tempo e erros.
-- [ ] Decidir quais provedores entram no MVP; se cobertura baixa, foto+IA e correção humana como fallback.
+- [x] Atualizar o escopo para incluir gestão financeira e reconhecimento por foto.
+- [x] Registrar opções técnicas, licenças públicas, preços publicados e lacunas de precisão em `PROPOSTA_TECNICA.md`.
+- [ ] Solicitar propostas/termos de uso e acesso de avaliação sem contratar plano: InVintory, Wine-Searcher e, se ainda competitivo, WineEngine.
+- [ ] Montar conjunto rotulado de 30–50 garrafas/EANs e fotos, incluindo vinhos brasileiros, nomes parecidos, múltiplas safras e casos de safra ilegível.
+- [ ] Medir top-1/top-3 de identidade, precisão/cobertura de safra, uva e região, falsos positivos, cobertura de preços no Brasil, latência, correções humanas e custo real por cadastro.
+- [ ] Comparar a busca EAN da adega, Open Food Facts, catálogos de vinho e pesquisa web; nunca deduzir safra do EAN sozinho.
+- [ ] Aprovar explicitamente provedor, orçamento, retenção de fotos, licença/caching de catálogo e limites antes de qualquer integração paga.
 
-**Saída:** relatório de benchmark + decisão documentada sobre API(s) + custo estimado por 100/1.000 scans.
+**Saída:** decisão de go/no-go com comparação testável, custo por 100/1.000 identificações e fornecedor escolhido (ou manutenção do fluxo manual).
 
 ## Fase 1 — Base do projeto e adega visual mínima
 **Status:** concluída e validada ponta a ponta no Neon.
+
 - [x] Criar projeto Next.js + TS + banco relacional e autenticação.
 - [x] Criar uma adega por proprietário no MVP.
 - [x] Criar prateleiras com linhas e colunas; grid visual navegável e edição de prateleira.
@@ -32,59 +31,104 @@
 **Saída:** app funcional sem IA que já encontra cada garrafa na posição física.
 
 ## Fase 2 — Cadastro e identificação assistida
-**Escopo:** manter a busca textual, o cadastro manual e o scanner de código de barras já existentes. Toda sugestão deve ser revisada antes de gravar; integrações pagas de reconhecimento visual não fazem parte desta entrega.
-**Status:** concluída e validada ponta a ponta no Neon segundo os registros da branch `codex/fase-2-identificacao`.
-- [x] Buscar até 10 candidatos na WineAPI e selecionar um resultado.
-- [x] Carregar a ficha disponível, permitir revisão/correção manual e deixar desconhecidos em branco.
+**Escopo entregue:** busca textual, cadastro manual, scanner EAN-13 e revisão humana. Reconhecimento por foto faz parte do escopo do produto e está planejado como complemento na Fase 5; não altera o que já foi entregue nesta fase.
+**Status:** concluída e validada ponta a ponta no Neon.
+
+- [x] Buscar candidatos na WineAPI pela pesquisa textual, quando habilitada.
+- [x] Carregar ficha disponível, permitir revisão/correção manual e deixar campos desconhecidos em branco.
 - [x] Escolher quantidade e posições; bloquear posições ocupadas ou incompatíveis com a regra da prateleira.
-- [x] Reusar a ficha de vinho por nome, produtor e safra, sem criar duplicatas ao cadastrar mais unidades.
-- [x] Confirmar a gravação da ficha revisada e das garrafas no Neon; recarregar e validar persistência.
-- [x] Preservar o scanner EAN-13 e deixar integrações de identificação externa desligadas sem credenciais e autorização.
+- [x] Reusar ficha por nome, produtor e safra revisados, sem criar duplicatas ao cadastrar mais unidades.
+- [x] Validar scanner EAN-13, associação a vinhos existentes e fluxo manual; integrações externas permanecem protegidas por configuração/credencial.
 
-**Fora do escopo desta fase:** adicionar serviços pagos de reconhecimento por imagem.
-
-**Saída:** busca textual → candidato escolhido → ficha revisada → posições → garrafas cadastradas e persistidas.
+**Saída:** busca/código → candidatos revisáveis → ficha revisada → posições → garrafas cadastradas e persistidas.
 
 ## Fase 3 — Histórico e avaliações das garrafas
-**Status:** concluída. Fluxos completos verificados na interface do Preview com Neon Auth/Data API em branch descartável; migrations 0008–0009 conferidas no Neon e migrations 0001–0009 reaplicadas em PostgreSQL 16 local descartável.
-- [x] Mover garrafas entre posições e trocar ocupantes, respeitando as regras das prateleiras e registrando origem/destino.
-- [x] Retirar garrafas, liberar a posição e registrar data, responsável e motivo opcional.
+**Status:** integrada em `main` pelo PR #9 (merge `597b4e3`); validações funcionais foram concluídas antes do merge no Preview e em branch Neon descartável. Migrations 0001–0009 foram aplicadas/verificadas na branch descartável e no PostgreSQL 16 local descartável. Não foram reaplicadas durante o merge.
+
+- [x] Mover garrafas entre posições e trocar ocupantes, respeitando regras e registrando origem/destino.
+- [x] Retirar garrafas, liberar posição e registrar data, responsável e motivo opcional.
 - [x] Consultar movimentações, trocas e retiradas no histórico.
-- [x] Avaliar cada garrafa com 1 a 5 estrelas e comentário opcional; calcular a média por vinho e safra.
-- [x] Aplicar e verificar as migrations 0008–0009 em uma branch Neon isolada; testar persistência, conflitos, regras e autorização do proprietário.
-- [x] Validar os fluxos completos na interface conectada ao Neon e no Preview, incluindo persistência após reload.
-- [x] Testar RLS com duas contas Neon Auth e duas movimentações concorrentes disputando a mesma posição.
+- [x] Avaliar cada garrafa de 1 a 5 estrelas e calcular média por vinho/safra.
+- [x] Validar persistência, conflitos, regras e autorização do proprietário.
+- [x] Validar interface, concorrência de posições e RLS com duas contas.
 
-**Saída:** inventário com histórico de movimentações, retiradas e avaliações.
+**Saída:** inventário com histórico de movimentações, retiradas e avaliações. O escopo concluído desta fase não muda.
 
-## Fase 4 — Compartilhamento e beta familiar
+**Gate de produção (pendente):** integração do código não executa migrations nem autoriza publicação. Antes de habilitar produção, validar backup/restauração, comparar o ledger e schema do destino, conferir o preflight de dados da migration 0008 e aprovar explicitamente uma janela de publicação. Não apontar testes para produção.
+
+## Fase 4 — Gestão financeira da coleção
+**Dependência:** a captura manual de preço pago e o resumo financeiro inicial não dependem da Fase 0 nem de API externa. Cotações automatizadas dependem de fonte e licença aprovadas; não contratar nem habilitar serviços pagos nesta etapa.
+
+- [ ] Exigir preço pago em cada nova compra, por garrafa e na moeda original; preservar a moeda/valor informados.
+- [ ] Converter o preço pago historicamente pela data da compra e guardar taxa/fonte. Se não houver data ou taxa aplicável, aceitar equivalente em BRL informado manualmente e identificá-lo como conversão manual.
+- [ ] Consultar cotação atual por vinho, safra e formato; armazenar histórico, URL, provedor, moeda, data da coleta e taxa de câmbio.
+- [ ] Classificar oferta verificável da safra/formato exatos como confirmada; médias, histórico, outra safra ou correspondência incompleta como estimada. Outra safra pode servir de referência, desde que a safra comparada apareça explicitamente.
+- [ ] Aceitar estimativa manual quando não houver cotação, sempre identificada como estimativa. Ao surgir cotação confiável da mesma safra e formato, substituir automaticamente a estimativa no valor atual e preservar a observação anterior no histórico.
+- [ ] Atualizar cotações semanalmente e oferecer botão de atualização manual, com indicação de última atualização e cotação vencida.
+- [ ] Calcular todos os totais financeiros em BRL e exibir separadamente preço pago convertido, parcela confirmada, parcela estimada e unidades sem valor.
+- [ ] Criar controles independentes de privacidade para preço pago e valor de mercado, privados por padrão para visitantes.
+- [ ] Aplicar autorização/RLS e filtros no servidor; QR/link público nunca recebe valores por padrão.
+
+**Saída:** valores por garrafa rastreáveis e resumo financeiro em BRL, sem preencher lacunas por suposição.
+
+## Fase 5 — Identificação por foto como complemento ao EAN
+**Dependência:** conclusão da Fase 0; preservar scanner e cadastro manual da Fase 2.
+
+- [ ] Começar por EAN-13 já implementado; resolver primeiro associações locais, depois catálogos autorizados e busca web pelo código e candidatos.
+- [ ] Usar IA apenas para ordenar/explicar candidatos encontrados por fontes, com URL e proveniência por campo; não tratar código EAN como atributo semântico.
+- [ ] Oferecer foto quando o EAN não existir, estiver ambíguo ou não tiver ficha suficiente.
+- [ ] Avaliar fornecedor especializado e OCR/visão genéricos; obter produtor, nome, safra, uva e região quando houver evidência.
+- [ ] Mostrar candidatos e origem/confiança para cada campo; ausentes ou conflitantes ficam `desconhecidos`.
+- [ ] Exigir revisão e confirmação humana antes de criar ficha, associação EAN ou garrafa.
+- [ ] Nunca inventar, inferir ou confirmar automaticamente uma safra incerta; falha do provedor retorna ao fluxo manual.
+- [ ] Medir precisão, cobertura, taxa de correção, latência, custo por cadastro finalizado e descarte de fotos.
+
+**Saída:** fluxo EAN → pesquisa de candidatos → foto/IA quando necessário → revisão humana → cadastro explícito.
+
+## Fase 6 — Compartilhamento e beta familiar
+**Dependência:** concluir Fases 4–5 e validar privacidade das informações financeiras.
+
 - [ ] QR Code revogável e URL não listada para leitura sem conta.
-- [ ] Convite por link somente do proprietário; permissões OWNER/MANAGER/VISITOR.
-- [ ] Validar controles no backend (inclusive tentativas de edição via API).
-- [ ] Testar com uma adega real de 2×(10×20) posições e outra pequena sem regra.
+- [ ] Expor coleção/localizações em leitura; ocultar preço pago e cotação por padrão.
+- [ ] Aplicar controles de visibilidade separados definidos na Fase 4.
+- [ ] Convites apenas pelo proprietário; funções OWNER/MANAGER/VISITOR.
+- [ ] Validar acesso no backend, inclusive chamadas diretas à API.
+- [ ] Testar adega real de 2×(10×20) posições e outra pequena sem regra.
 - [ ] Melhorar UX no iPhone: câmera, busca, posições e carregamento.
 
-**Saída:** beta familiar com acesso por convite e controles de leitura/edição.
+**Saída:** beta familiar com controles de acesso e de privacidade de valores validados.
 
-## Fase 5 — Hardening e expansão orientada por uso
-- [ ] Medir qualidade da busca textual, taxa de correção, cobertura e custo por consulta.
+## Fase 7 — Hardening e expansão orientada por uso
+**Dependência:** concluir o beta familiar na Fase 6.
+
+- [ ] Medir precisão de EAN/foto, taxas de correção, cobertura de preços e custo por consulta.
 - [ ] Resolver gargalos, acessibilidade, rate limits, observabilidade e backups.
-- [ ] Validar contratos/licenças dos dados antes de monetizar.
-- [ ] Só depois avaliar múltiplas adegas, transferências, recomendações e monetização.
+- [ ] Testar restauração e detecção de cotações vencidas/fonte removida.
+- [ ] Validar contratos e licenças dos dados antes de monetizar.
+- [ ] Só com evidência de uso avaliar múltiplas adegas, transferências, recomendações e monetização.
 
-## Ordem obrigatória de execução
-**Adega visual e cadastro manual → busca e scanner existentes → histórico e avaliações → compartilhamento/beta familiar → hardening. Não adicionar reconhecimento pago por imagem.**
+**Saída:** beta operacionalmente confiável; expansões apoiadas por métricas e licenças verificadas.
 
-## Critérios de bloqueio (não avançar sem resolver)
-- Identificação de rótulos ambíguos não pode selecionar marca/safra erradas silenciosamente.
-- Não conseguir garantir uma garrafa por posição bloqueia fase 2.
-- Fornecedor sem direitos para integração comercial não pode ser base única do produto vendável.
+## Ordem obrigatória
+**Fases 1–3 integradas → Fase 4.1 (preço pago e gestão manual, sem APIs) → Fase 0 (descoberta/gate apenas para fontes externas) → Fase 4.2 (cotações, após aprovação) e Fase 5 (EAN + foto/IA) → Fase 6 (compartilhamento) → Fase 7 (hardening).**
 
-## Backlog explicitamente adiado
-- Múltiplas adegas/transferências/em transporte;
-- Marketplace e revenda;
-- Funcionalidades sociais públicas;
-- IA sommelier e sensores físicos.
+Nenhuma etapa reabre ou reduz o escopo entregue nas Fases 1–3. As integrações pagas só podem ser escolhidas depois de benchmark, licença e custo aprovados.
 
-## Decisão de escopo
-Preços de compra, cotações de mercado, conversão cambial e valor total da coleção não fazem parte do produto.
+## Critérios de bloqueio
+- Safra incerta, contraditória ou sem fonte permanece desconhecida; nenhum modelo pode confirmá-la automaticamente.
+- Correspondência ambígua não pode gravar produto ou garrafa sem revisão humana.
+- Valor `confirmado` exige oferta verificável de vinho, safra e formato compatíveis, com URL e data; caso contrário mostrar `estimado` ou desconhecido.
+- Visitante não pode obter valores financeiros enquanto o proprietário não liberar cada categoria.
+- Provedor sem licença de uso, retenção e caching compatível não pode ser ativado.
+- Custo ou cobertura inadequados mantêm caminho manual e bloqueiam contratação, não as Fases 1–3.
+
+## Backlog fora do escopo desta versão
+- Múltiplas adegas por proprietário na UI; transferências entre adegas ou transporte/recebimento parcial.
+- Marketplace, compra/venda e integração de e-commerce.
+- Funcionalidades sociais públicas, sommelier conversacional e sensores físicos.
+- Treinar modelo proprietário de visão do zero ou copiar catálogo protegido de fornecedor.
+
+## Decisões revisadas
+- Gestão financeira voltou ao escopo de produto; preço pago, mercado, atualização periódica, total em BRL e privacidade são requisitos da Fase 4.
+- Foto e IA voltaram ao escopo como complemento do EAN, não como substituto; revisão humana obrigatória e safra incerta nunca é confirmada automaticamente.
+- O conteúdo anteriormente excluído foi atualizado em `PRD.md` e `TESTES_APIS.md`; ver também [proposta e estimativas](PROPOSTA_TECNICA.md).
