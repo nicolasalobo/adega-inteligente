@@ -174,6 +174,13 @@ try {
       await route.abort();
       return;
     }
+    const vercelOidcToken = process.env.VERCEL_OIDC_TOKEN;
+    if (vercelOidcToken && url.origin === origin) {
+      await route.continue({
+        headers: { ...route.request().headers(), "x-vercel-trusted-oidc-idp-token": vercelOidcToken },
+      });
+      return;
+    }
     await route.continue();
   });
 
