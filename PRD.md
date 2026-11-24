@@ -1,8 +1,8 @@
 # PRD — Adega pessoal inteligente
 
-**Versão:** 1.3 (requisitos financeiros e integração da Fase 3 consolidados)
+**Versão:** 1.4 (Fases 1–3 integradas; Fase 4 planejada)
 **Data:** 24/11/2026
-**Status:** Fases 1–2 integradas; Fase 3 implementada e validada em branch/ambiente isolado no PR #9, aguardando integração; gestão financeira e reconhecimento por foto planejados, ainda não implementados.
+**Status:** Fases 1–3 integradas em `main` (PR #9, commit `597b4e3`); gestão financeira e reconhecimento por foto estão planejados e ainda não implementados. A integração não publicou em produção.
 **Visão:** ajudar uma pessoa a identificar, organizar, localizar e acompanhar o valor de cada garrafa, combinando scanner EAN-13, busca revisável, foto opcional e adega visual.
 
 ## 1. Problema e proposta de valor
@@ -71,7 +71,7 @@ Proprietário compartilha QR Code ou URL secreta e revogável → visitante sem 
 | F10 | Sugestão inteligente de posição | P1 | Sugere próximas a vinhos iguais/semelhantes sem bloquear escolha válida |
 | F11 | Mover e trocar posições | P1 | Troca validada dos dois lados e registrada atomicamente |
 | F12 | Histórico auditável | P1 | Cada movimento e retirada registra data, usuário e origens/destinos |
-| F13 | Retirada e avaliação por garrafa | P1 | Histórico e avaliações opcionais; média correta por vinho/safra |
+| F13 | Retirada e avaliação por garrafa | P1 | Histórico auditável; nota obrigatória de 1–5, comentário opcional e média correta por vinho/safra |
 | F14 | QR/link revogável para visitante sem login | P1 | Somente leitura, acesso não indexado; regeneração/revogação efetiva |
 | F15 | Compartilhamento por convite | P2 | Apenas proprietário emite convite; gerente edita; visitante consulta |
 | F16 | Registrar preço pago por garrafa | P1 | Obrigatório em cada nova compra; guardar valor por unidade e moeda original, com conversão histórica para BRL quando houver data/taxa correspondentes |

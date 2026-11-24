@@ -11,7 +11,7 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Plano de execução
 
-As Fases 1–2 estão integradas. A Fase 3 está implementada e validada no PR #9, ainda aguardando integração; veja as evidências e os testes pendentes em [TESTES_APIS.md](TESTES_APIS.md). O roadmap posiciona o gate de integração da Fase 3 antes da descoberta técnica, gestão financeira, reconhecimento por foto, compartilhamento familiar e hardening. Esta revisão atualiza o planejamento; não ativa integrações pagas nem altera produção.
+As Fases 1–3 estão integradas em `main`. A Fase 3 foi validada antes do merge no Preview e na branch Neon descartável; o merge do PR #9 não publicou em produção. As evidências históricas e os gates de produção estão em [TESTES_APIS.md](TESTES_APIS.md). A Fase 4 começa pela gestão manual do preço pago, sem APIs pagas; cotações automatizadas e reconhecimento por foto continuam planejados.
 
 O escopo de produto inclui preço pago, estimativa de mercado e reconhecimento por foto. O scanner EAN-13 continua sendo o caminho principal; dados sugeridos por EAN, busca web ou IA exigem revisão humana.
 
@@ -41,14 +41,14 @@ Copie `web/.env.example` para `web/.env.local` e rode os comandos acima. Sem `NE
 
 ### Rodar no notebook com banco de desenvolvimento
 
-Clone a branch atual e conecte ao mesmo banco Neon:
+Clone `main` e conecte ao ambiente de desenvolvimento persistente `fase4-dev-persistente-20261124` (branch Neon `br-falling-base-beux9a0a`):
 
 ```powershell
-git clone --branch codex/phase-1-base https://github.com/nicolasalobo/adega-inteligente.git
+git clone https://github.com/nicolasalobo/adega-inteligente.git
 cd adega-inteligente\web
 npm ci
 Copy-Item .env.example .env.local
 npm run dev
 ```
 
-O `.env.example` inclui o endereço público do projeto. Entre com a mesma conta para ver os dados sincronizados. Não é preciso instalar Docker; migrations futuras e a seed opcional precisam da connection string privada no `DATABASE_URL`. Detalhes em [web/README.md](web/README.md).
+O `.env.example` aponta ao endpoint público desse branch; a autenticação local usa `localhost`. O banco está vazio nas tabelas da aplicação e já tem as migrations 0001–0009. Use apenas contas e dados sintéticos. `DATABASE_URL` e `DATABASE_URL_POOLED` ficam vazios por padrão para impedir que comandos administrativos atinjam o endpoint anterior; ao precisar deles, configure `DATABASE_URL` com a conexão direta copiada do botão **Connect** desse branch, nunca a conexão de produção. Não é preciso instalar Docker. Detalhes em [web/README.md](web/README.md).

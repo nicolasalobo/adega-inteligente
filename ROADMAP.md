@@ -1,8 +1,8 @@
 # Roadmap de desenvolvimento — Adega Inteligente
 
-**Versão:** 1.7 | **Status:** Fases 1–2 integradas; Fase 3 implementada/validada no PR #9 e aguardando integração; Fase 0 de descoberta atualizada; Fases 4–7 pendentes | **Data:** 24/11/2026
+**Versão:** 1.8 | **Status:** Fases 1–3 integradas; Fase 0 de descoberta atualizada; Fases 4–7 pendentes | **Data:** 24/11/2026
 
-> O trabalho desta revisão atualiza requisitos e planejamento. Não implementa nem ativa integrações pagas, não altera produção e não faz merge do PR #9.
+> O PR #9 foi integrado em `main` (commit `597b4e3`). A publicação em produção permanece desativada temporariamente na Vercel; Previews continuam habilitados. Esta revisão não implementa nem ativa integrações pagas.
 
 ## Fase 0 — Descoberta de EAN, foto e cotações
 **Status:** proposta e custos documentados; benchmark representativo e decisão final de fornecedor pendentes. Esta fase não exige contratação nem chamadas pagas.
@@ -43,7 +43,7 @@
 **Saída:** busca/código → candidatos revisáveis → ficha revisada → posições → garrafas cadastradas e persistidas.
 
 ## Fase 3 — Histórico e avaliações das garrafas
-**Status:** implementação e validações concluídas no PR #9; integração com `main` e produção pendente. Fluxos foram verificados na interface Preview com Neon Auth/Data API em branch descartável; migrations 0008–0009 foram verificadas em branch isolada e migrations 0001–0009 aplicadas em PostgreSQL 16 local descartável. O status disponível do PR registra somente o Preview Vercel como check externo; lint, build e teste local de migrations passaram em 24/11/2026.
+**Status:** integrada em `main` pelo PR #9 (merge `597b4e3`); validações funcionais foram concluídas antes do merge no Preview e em branch Neon descartável. Migrations 0001–0009 foram aplicadas/verificadas na branch descartável e no PostgreSQL 16 local descartável. Não foram reaplicadas durante o merge.
 
 - [x] Mover garrafas entre posições e trocar ocupantes, respeitando regras e registrando origem/destino.
 - [x] Retirar garrafas, liberar posição e registrar data, responsável e motivo opcional.
@@ -54,10 +54,10 @@
 
 **Saída:** inventário com histórico de movimentações, retiradas e avaliações. O escopo concluído desta fase não muda.
 
-**Gate de integração:** antes de liberar a Fase 3, confirmar revisão do PR #9, checks aplicáveis, estado da branch Neon de validação, ledger/schema do destino, preflight de dados para a migration 0008 e plano de backup/restauração. A branch descartável usada na validação tinha expiração agendada para 24/11/2026 às 10:37 BRT; criar outra branch isolada se for necessário repetir teste remoto. Não apontar testes para produção.
+**Gate de produção (pendente):** integração do código não executa migrations nem autoriza publicação. Antes de habilitar produção, validar backup/restauração, comparar o ledger e schema do destino, conferir o preflight de dados da migration 0008 e aprovar explicitamente uma janela de publicação. Não apontar testes para produção.
 
 ## Fase 4 — Gestão financeira da coleção
-**Dependência:** Fase 0 define licença e fontes para cotações. Preço pago manual pode funcionar sem integração externa.
+**Dependência:** a captura manual de preço pago e o resumo financeiro inicial não dependem da Fase 0 nem de API externa. Cotações automatizadas dependem de fonte e licença aprovadas; não contratar nem habilitar serviços pagos nesta etapa.
 
 - [ ] Exigir preço pago em cada nova compra, por garrafa e na moeda original; preservar a moeda/valor informados.
 - [ ] Converter o preço pago historicamente pela data da compra e guardar taxa/fonte. Se não houver data ou taxa aplicável, aceitar equivalente em BRL informado manualmente e identificá-lo como conversão manual.
@@ -110,7 +110,7 @@
 **Saída:** beta operacionalmente confiável; expansões apoiadas por métricas e licenças verificadas.
 
 ## Ordem obrigatória
-**Fases 1–2 integradas → integrar/liberar Fase 3 após o gate acima → Fase 0 (descoberta/gate de fornecedores) → Fase 4 (financeiro) → Fase 5 (EAN + foto/IA) → Fase 6 (compartilhamento) → Fase 7 (hardening).**
+**Fases 1–3 integradas → Fase 4.1 (preço pago e gestão manual, sem APIs) → Fase 0 (descoberta/gate apenas para fontes externas) → Fase 4.2 (cotações, após aprovação) e Fase 5 (EAN + foto/IA) → Fase 6 (compartilhamento) → Fase 7 (hardening).**
 
 Nenhuma etapa reabre ou reduz o escopo entregue nas Fases 1–3. As integrações pagas só podem ser escolhidas depois de benchmark, licença e custo aprovados.
 

@@ -1,7 +1,7 @@
 # Guia prático para testar APIs de vinhos
 
 **Data da revisão de provedores:** 24/11/2026. Preços e condições podem mudar.
-**Situação:** as Fases 1–2 estão integradas. A Fase 3 foi implementada e validada no PR #9, que aguarda integração; veja abaixo o resultado e os testes/gates pendentes. Gestão financeira e reconhecimento por foto fazem parte do escopo e estão planejados nas Fases 4–5. Esta documentação é pesquisa; não ativa nem implementa integrações pagas. Proposta, limites e estimativas estão em [PROPOSTA_TECNICA.md](PROPOSTA_TECNICA.md).
+**Situação:** as Fases 1–3 estão integradas em `main`. A validação da Fase 3 no PR #9 foi concluída antes do merge; este registro é histórico e não foi repetido durante a integração. A gestão financeira começa por preço pago manual, sem APIs pagas; cotações automatizadas e reconhecimento por foto seguem planejados. Esta documentação não ativa integrações pagas. Proposta, limites e estimativas estão em [PROPOSTA_TECNICA.md](PROPOSTA_TECNICA.md).
 
 ## Decisão atualizada — 24/11/2026
 - O scanner EAN-13 já implementado permanece a primeira opção. Pode usar catálogo e pesquisa web para localizar candidatos, com IA apenas como apoio à ordenação/explicação; EAN sozinho não identifica safra e nenhuma sugestão é salva sem revisão humana.
@@ -39,6 +39,8 @@ O teste Neon também encontrou um defeito de cliente server-side: `@neon/neon-js
 Os registros de teste permanecem apenas na branch descartável e expiram junto com ela. O teste não valida chamadas comerciais externas. WineAPI, Brave e OpenAI permanecem desligadas; Open Food Facts foi consultado ao vivo anteriormente e retornou 404 para ambos os EANs.
 
 ## Validação da Fase 3 / PR #9 — atualização 24/11/2026
+
+O PR #9 foi integrado em `main` em 24/11/2026 (merge `597b4e3`). As migrations 0001–0009 já estavam aplicadas e verificadas na branch Neon descartável `codex-fase3-revalidacao-20261124` (expira em 25/11/2026 às 18:22 BRT); o merge não reaplicou migrations. A Vercel estava configurada em `Only build pre-production`: `VERCEL_ENV=preview` permite build e produção é ignorada. O registro de deployment da `main` ficou `CANCELED`; nenhum deployment foi publicado em produção. Previews seguem ativos. Esta configuração é temporária e reversível.
 
 - As migrations `0008_require_bottle_review_rating.sql` e `0009_distinguish_swap_history.sql` foram verificadas na branch temporária `codex-fase3-validation-20261123` (`br-fancy-mode-be8k6bgd`) do projeto Neon `adega-fase1-validacao`. O SQL Editor confirmou `neon.branch_id` correto, 9 migrations registradas, `bottle_reviews.rating NOT NULL` e o tipo de histórico `swap`. A expiração estava agendada para 24/11/2026 às 10:37 BRT; esse horário já passou e o status atual da branch não pôde ser confirmado nesta revisão. Para qualquer nova validação remota, criar branch Neon isolada nova e conferir `neon.branch_id` antes de escrever. Nenhuma migration ou escrita foi feita em produção, e `.env.local` não foi usado para conexões de teste.
 - `npm run test:migrations:local` aplicou em PostgreSQL 16 descartável as migrations 0001–0009 e aprovou EAN, cadastro/RPC atômico, regras e dimensões, unicidade, movimento, troca, retirada, histórico, ratings/médias por safra e RLS simulado. Executado novamente em 24/11; passou e removeu o container temporário. O daemon Docker foi iniciado localmente para esse teste.

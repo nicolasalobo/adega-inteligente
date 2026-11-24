@@ -1,0 +1,36 @@
+import {chromium} from 'playwright';
+import {randomUUID} from 'node:crypto';
+import {Client} from 'pg';
+import assert from 'node:assert/strict';
+import {getNeonDatabaseUrl} from './neon-env.mjs';
+const expected=process.env.TEST_NEON_BRANCH_ID, prod=process.env.TEST_NEON_PRODUCTION_BRANCH_ID;
+if(!expected || !prod || expected===prod)throw Error('Informe IDs distintos para produção e teste');
+const url=new URL(getNeonDatabaseUrl()),client=new Client({connectionString:url.toString()});await client.connect();
+const branch=(await client.query("select current_setting('neon.branch_id',true) id")).rows[0].id;
+if(branch!==expected)throw Error('Branch incorreta');
+const endpoint=url.hostname.split('.')[0], email=`ui-${randomUUID()}@example.invalid`,password=`A${randomUUID()}z!`;
+const executablePath=process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+const browser=await chromium.launch({headless:true,...(executablePath ? {executablePath} : {})});
+const context=await browser.newContext({viewport:{width:1200,height:900}}),page=await context.newPage();
+let answers=[];
+page.on('dialog',async d=>{const v=answers.shift();if(v===undefined)throw Error('Diálogo inesperado: '+d.message());await d.accept(v===true?undefined:v)});
+await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.hostname.endsWith('neon.tech')&&!u.hostname.startsWith(endpoint+'.')&&!u.hostname.startsWith(endpoint+'-'))throw Error('Endpoint Neon inesperado');await route.continue()});
+try{
+ await page.goto('http://localhost:3101');
+ await page.getByRole('button',{name:'Criar conta'}).click();
+ await page.getByLabel('E-mail').fill(email);await page.getByLabel('Senha').fill(password);await page.getByRole('button',{name:'Criar minha conta'}).click();
+ await page.getByRole('button',{name:'Registrar vinho'}).waitFor();
+ await page.getByRole('button',{name:'Registrar vinho'}).click();
+ await page.getByLabel('Nome do vinho').fill('Vinho teste interface');await page.getByRole('textbox',{name:'Produtor *',exact:true}).fill('Produtor teste');await page.getByLabel('Quantidade').fill('2');
+ await page.getByRole('button',{name:'Linha 1, coluna 1, disponível'}).click();await page.getByRole('button',{name:'Linha 1, coluna 2, disponível'}).click();await page.getByRole('button',{name:'Adicionar 2 garrafas'}).click();
+ await page.getByText('2 garrafas adicionadas à adega').waitFor();
+ await page.reload();await page.getByRole('button',{name:'Adega principal, linha 1, coluna 1, Vinho teste interface'}).waitFor();
+ await page.getByRole('button',{name:'Adega principal, linha 1, coluna 1, Vinho teste interface'}).click();
+ answers=['Adega principal/1/3'];await page.getByRole('button',{name:'Mover',exact:true}).click();await page.getByText('Garrafa movida; movimentação registrada.').waitFor();
+ await page.getByRole('button',{name:'Adega principal, linha 1, coluna 3, Vinho teste interface'}).click();answers=['Adega principal/1/2',true];await page.getByRole('button',{name:'Mover',exact:true}).click();await page.getByText('Garrafa movida; movimentação registrada.').waitFor();
+ await page.getByRole('button',{name:'Avaliar garrafa'}).click();await page.getByRole('button',{name:'4 estrelas'}).click();await page.getByPlaceholder('O que achou deste vinho?').fill('Teste excelente');await page.getByRole('button',{name:'Salvar avaliação'}).click();await page.getByText('Avaliação salva para esta garrafa.').waitFor();
+ await page.getByText('Média do vinho: 4,0 / 5').waitFor();answers=['consumida',true];await page.getByRole('button',{name:'Retirar',exact:true}).click();await page.getByText('Retirada registrada; posição liberada.').waitFor();
+ await page.getByRole('button',{name:'Histórico',exact:true}).click();await page.getByText('Teste excelente').first().waitFor();await page.getByText('Troca:').first().waitFor();
+ await page.reload();await page.getByRole('button',{name:'Histórico',exact:true}).click();await page.getByText('Teste excelente').first().waitFor();
+ const events=await page.locator('.history-item').count();assert.equal(events,4);assert.equal(answers.length,0);console.log('Interface: lote, recarga, movimentação, troca, avaliação, retirada e 4 eventos persistidos aprovados.');
+}finally{await browser.close();const ids=(await client.query('select id from neon_auth."user" where email=$1',[email])).rows;for(const {id} of ids){await client.query('delete from public.bottles where cellar_id in (select id from public.cellars where owner_id=$1)',[id]);await client.query('delete from public.wines where cellar_id in (select id from public.cellars where owner_id=$1)',[id]);await client.query('delete from public.shelves where cellar_id in (select id from public.cellars where owner_id=$1)',[id]);await client.query('delete from public.cellars where owner_id=$1',[id]);await client.query('delete from neon_auth."user" where id=$1',[id]);}await client.end()}

@@ -10,11 +10,13 @@ import {
   Grid2X2,
   LayoutDashboard,
   Leaf,
+  LoaderCircle,
   Pencil,
   Plus,
   Search,
   Settings2,
   Sparkles,
+  Star,
   Wine,
   X,
 } from "lucide-react";
@@ -35,11 +37,27 @@ import {
 } from "@/lib/cellar";
 import { fetchCellarInventory, shelfFromDatabase } from "@/lib/neon/cellar-data";
 import { createNeonBrowserClient, hasNeonConfig } from "@/lib/neon/client";
+import { BarcodeIdentification } from "@/components/BarcodeIdentification";
+import type { IdentificationCandidate } from "@/lib/identification/contracts";
 
-type View = "map" | "wines";
+type View = "map" | "wines" | "history";
 type DataMode = "checking" | "signed-out" | "local" | "remote" | "error";
 type PositionDraft = { row: number; column: number; key: string };
 type WineDraft = Omit<WineRecord, "id">;
+type WineApiReference = string | { id?: string; name?: string; country?: string } | null;
+type WineCatalogCandidate = {
+  id: string;
+  name: string;
+  vintage: string | number | null;
+  type: string | null;
+  winery: WineApiReference;
+  region: WineApiReference;
+  country: string | null;
+};
+
+function catalogReferenceName(value: WineApiReference | undefined) {
+  return typeof value === "string" ? value : value?.name ?? "";
+}
 
 const criterionNames: Record<WineCriterion, string> = {
   country: "País",
@@ -108,6 +126,7 @@ export default function Home() {
   const [neonClient, setNeonClient] = useState<ReturnType<typeof createNeonBrowserClient> | null>(null);
   const [remoteCellarId, setRemoteCellarId] = useState<string | null>(null);
   const [remoteEmail, setRemoteEmail] = useState("");
+  const [remoteUserId, setRemoteUserId] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState("");
   const [view, setView] = useState<View>("map");
   const [activeShelfId, setActiveShelfId] = useState("shelf-main");
@@ -118,6 +137,7 @@ export default function Home() {
   const [showAddShelf, setShowAddShelf] = useState(false);
   const [editingShelf, setEditingShelf] = useState<Shelf | null>(null);
   const [toast, setToast] = useState("");
+  const [reviewingBottle, setReviewingBottle] = useState<Bottle | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
 
   const loadRemoteCellar = useCallback(async (
@@ -159,6 +179,7 @@ export default function Home() {
       setActiveShelfId(inventory.shelves[0]?.id ?? "");
       setRemoteCellarId(remoteCellar.id);
       setRemoteEmail(user.email ?? "");
+      setRemoteUserId(user.id);
       setSelectedPosition(null);
       setDataMode("remote");
       setHydrated(true);
@@ -172,8 +193,8 @@ export default function Home() {
   useEffect(() => {
     if (hasNeonConfig) {
       const client = createNeonBrowserClient();
-      setNeonClient(client);
       void client.auth.getUser().then(({ data, error }) => {
+        setNeonClient(client);
         if (error) {
           if (/no user session found/i.test(error.message)) {
             setDataMode("signed-out");
@@ -201,6 +222,8 @@ export default function Home() {
 
     const storedCellar = readStoredCellar();
     if (storedCellar) {
+      // Reconcile the server-rendered demo with this browser's saved local cellar after hydration.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCellar(storedCellar);
       setActiveShelfId(storedCellar.shelves[0].id);
     }
@@ -230,6 +253,7 @@ export default function Home() {
         setShowAddBottle(false);
         setShowAddShelf(false);
         setEditingShelf(null);
+        setReviewingBottle(null);
       }
     }
     window.addEventListener("keydown", handleShortcut);
@@ -253,13 +277,11 @@ export default function Home() {
   const selectedBottle = selectedPosition ? bottleByPosition.get(selectedPosition) : undefined;
   const selectedWine = selectedBottle ? wineById.get(selectedBottle.wineId) : undefined;
 
-  async function addBottle(draft: WineDraft, shelf: Shelf, positions: PositionDraft[]) {
+  async function addBottle(draft: WineDraft, shelf: Shelf, positions: PositionDraft[], barcode?: { ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null) {
     if (dataMode === "remote") {
-      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { error } = await neonClient.rpc("register_wine_bottles", {
-        p_cellar_id: remoteCellarId,
-        p_shelf_id: shelf.id,
-        p_wine: {
+      const client = neonClient;
+      if (!client || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const winePayload = {
           name: titleCase(draft.name),
           producer: titleCase(draft.producer),
           vintage: titleCase(draft.vintage),
@@ -267,9 +289,20 @@ export default function Home() {
           region: titleCase(draft.region),
           grapes: draft.grape.split(/[,;/]/).map((grape) => titleCase(grape)).filter(Boolean),
           custom_value: titleCase(draft.customValue ?? ""),
-        },
+        };
+      const rpc = barcode ? "register_wine_bottles_with_barcode" : "register_wine_bottles";
+      const rpcArgs = {
+        p_cellar_id: remoteCellarId,
+        p_shelf_id: shelf.id,
+        p_wine: winePayload,
         p_positions: positions.map(({ row, column }) => ({ row, column })),
-      });
+        ...(barcode ? {
+          p_ean13: barcode.ean13,
+          p_source_provider: barcode.sourceProvider,
+          p_source_url: barcode.sourceUrl,
+        } : {}),
+      };
+      const { error } = await client.rpc(rpc, rpcArgs);
 
       if (error) {
         if (error.code === "23505") throw new Error("Uma dessas posições acabou de ser ocupada. Escolha outras posições livres.");
@@ -277,7 +310,7 @@ export default function Home() {
         throw new Error(error.message || "Não foi possível salvar as garrafas.");
       }
 
-      const inventory = await fetchCellarInventory(neonClient, remoteCellarId);
+      const inventory = await fetchCellarInventory(client, remoteCellarId);
       setCellar(inventory);
       setActiveShelfId(shelf.id);
       setSelectedPosition(positions[0]?.key ?? null);
@@ -321,8 +354,9 @@ export default function Home() {
   async function addShelf(shelf: Omit<Shelf, "id">) {
     let newShelf: Shelf;
     if (dataMode === "remote") {
-      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { data, error } = await neonClient.from("shelves").insert({
+      const client = neonClient;
+      if (!client || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { data, error } = await client.from("shelves").insert({
         cellar_id: remoteCellarId,
         name: shelf.name,
         row_count: shelf.rows,
@@ -355,8 +389,9 @@ export default function Home() {
 
     let updatedShelf: Shelf;
     if (dataMode === "remote") {
-      if (!neonClient) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
-      const { data, error } = await neonClient.from("shelves").update({
+      const client = neonClient;
+      if (!client) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { data, error } = await client.from("shelves").update({
         name: shelf.name,
         row_count: shelf.rows,
         column_count: shelf.columns,
@@ -379,6 +414,74 @@ export default function Home() {
     setToast("Prateleira atualizada");
   }
 
+  async function moveBottle(bottle: Bottle) {
+    const shelf = cellar.shelves.find((item) => item.id === bottle.shelfId);
+    if (!shelf) return;
+    const destination = window.prompt(`Mover ${wineById.get(bottle.wineId)?.name ?? "garrafa"}. Informe destino como prateleira/linha/coluna. Prateleiras: ${cellar.shelves.map((item) => item.name).join(", ")}`, `${shelf.name}/${bottle.row}/${bottle.column}`);
+    if (!destination) return;
+    const [shelfName, rowText, columnText] = destination.split("/").map((part) => part.trim());
+    const targetShelf = cellar.shelves.find((item) => item.name.toLocaleLowerCase("pt-BR") === shelfName.toLocaleLowerCase("pt-BR"));
+    const row = Number(rowText), column = Number(columnText);
+    if (!targetShelf || !Number.isInteger(row) || !Number.isInteger(column) || row < 1 || row > targetShelf.rows || column < 1 || column > targetShelf.columns) {
+      setToast("Destino inválido. Use nome da prateleira/linha/coluna."); return;
+    }
+    if (targetShelf.id === bottle.shelfId && row === bottle.row && column === bottle.column) { setToast("A garrafa já está nessa posição."); return; }
+    const fits = (wineId: string, destinationShelf: Shelf, destinationRow: number, destinationColumn: number) => {
+      const wine = wineById.get(wineId), rule = destinationShelf.rule;
+      return !rule || (!!wine && wineMatchesCategory(wine, rule.criterion, rule.values[(rule.axis === "row" ? destinationRow : destinationColumn) - 1] ?? ""));
+    };
+    const occupant = cellar.bottles.find((item) => item.id !== bottle.id && item.shelfId === targetShelf.id && item.row === row && item.column === column);
+    if (!fits(bottle.wineId, targetShelf, row, column) || (occupant && !fits(occupant.wineId, shelf, bottle.row, bottle.column))) { setToast("A posição não aceita a categoria deste vinho."); return; }
+    if (occupant && !window.confirm("Esta posição está ocupada. Deseja trocar as duas garrafas?")) return;
+    if (dataMode === "remote") {
+      const { error } = occupant
+        ? await neonClient!.rpc("swap_bottles", { p_cellar_id: remoteCellarId, p_first: bottle.id, p_second: occupant.id })
+        : await neonClient!.rpc("move_bottle", { p_cellar_id: remoteCellarId, p_bottle_id: bottle.id, p_shelf_id: targetShelf.id, p_row: row, p_column: column });
+      if (error) { setToast(error.code === "23505" ? "Essa posição já está ocupada." : error.message); return; }
+      const updated = await fetchCellarInventory(neonClient!, remoteCellarId!);
+      setCellar(updated);
+    } else {
+      const now = new Date().toISOString();
+      const event = (item: Bottle, toShelfId: string, toRow: number, toColumn: number, type: "move" | "swap") => ({ id: crypto.randomUUID(), bottleId: item.id, wineId: item.wineId, type, fromShelfId: item.shelfId, fromRow: item.row, fromColumn: item.column, toShelfId, toRow, toColumn, reason: null, actorId: null, createdAt: now });
+      setCellar(current => ({ ...current, bottles: current.bottles.map(item => item.id === bottle.id ? { ...item, shelfId: targetShelf.id, row, column } : item.id === occupant?.id ? { ...item, shelfId: bottle.shelfId, row: bottle.row, column: bottle.column } : item), movements: [event(bottle, targetShelf.id, row, column, occupant ? "swap" : "move"), ...(occupant ? [event(occupant, bottle.shelfId, bottle.row, bottle.column, "swap")] : []), ...(current.movements ?? [])] }));
+    }
+    setActiveShelfId(targetShelf.id); setSelectedPosition(positionKey(targetShelf.id,row,column)); setToast("Garrafa movida; movimentação registrada.");
+  }
+
+  async function removeBottle(bottle: Bottle) {
+    const reason = window.prompt("Motivo da retirada (opcional):");
+    if (reason === null) return;
+    if (reason.length > 2000) { setToast("O motivo deve ter no máximo 2000 caracteres."); return; }
+    if (!window.confirm("Confirmar a retirada desta garrafa da adega?")) return;
+    if (dataMode === "remote") {
+      const { error } = await neonClient!.rpc("remove_bottle", { p_cellar_id: remoteCellarId, p_bottle_id: bottle.id, p_reason: reason || null });
+      if (error) { setToast(error.message); return; }
+      setCellar(await fetchCellarInventory(neonClient!, remoteCellarId!));
+    } else {
+      setCellar(current => ({ ...current, bottles: current.bottles.filter(item => item.id !== bottle.id), movements: [{ id: crypto.randomUUID(), bottleId: bottle.id, wineId: bottle.wineId, type: "remove", fromShelfId: bottle.shelfId, fromRow: bottle.row, fromColumn: bottle.column, toShelfId: null, toRow: null, toColumn: null, reason: reason.trim() || null, actorId: null, createdAt: new Date().toISOString() }, ...(current.movements ?? [])] }));
+    }
+    setSelectedPosition(null); setToast("Retirada registrada; posição liberada.");
+  }
+
+  function reviewBottle(bottle: Bottle) {
+    setReviewingBottle(bottle);
+  }
+
+  async function saveReview(bottle: Bottle, rating: number, comment: string) {
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error("A nota deve ser de 1 a 5 estrelas.");
+    if (comment.length > 2000) throw new Error("O comentário deve ter no máximo 2000 caracteres.");
+    if (dataMode === "remote") {
+      if (!neonClient || !remoteCellarId) throw new Error("A conexão com a adega não está pronta. Tente novamente.");
+      const { error } = await neonClient.from("bottle_reviews").upsert({ cellar_id: remoteCellarId, bottle_id: bottle.id, rating, comment: comment.trim() || null, updated_at: new Date().toISOString() }, { onConflict: "bottle_id" });
+      if (error) throw new Error(error.message || "Não foi possível salvar a avaliação.");
+      setCellar(await fetchCellarInventory(neonClient, remoteCellarId));
+    } else {
+      setCellar(currentState => ({ ...currentState, reviews: [...(currentState.reviews ?? []).filter(item => item.bottleId !== bottle.id), { bottleId: bottle.id, wineId: bottle.wineId, rating, comment: comment.trim() || null }] }));
+    }
+    setToast("Avaliação salva para esta garrafa.");
+    setReviewingBottle(null);
+  }
+
   function resetExample() {
     if (!window.confirm("Restaurar os vinhos de exemplo vai substituir os dados desta demonstração neste navegador. Quer continuar?")) return;
     const example = createExampleCellar();
@@ -390,9 +493,10 @@ export default function Home() {
   }
 
   async function signOut() {
-    if (!neonClient) return;
+    const client = neonClient;
+    if (!client) return;
     try {
-      const { error } = await neonClient.auth.signOut();
+      const { error } = await client.auth.signOut();
       if (error) throw error;
     } catch {
       setToast("Não foi possível sair da conta. Tente novamente.");
@@ -400,6 +504,7 @@ export default function Home() {
     }
     setRemoteCellarId(null);
     setRemoteEmail("");
+    setRemoteUserId(null);
     setDataMode("signed-out");
   }
 
@@ -420,8 +525,9 @@ export default function Home() {
 
   const wineCounts = new Map<string, number>();
   cellar.bottles.forEach((bottle) => wineCounts.set(bottle.wineId, (wineCounts.get(bottle.wineId) ?? 0) + 1));
+  const averageForWine = (wineId: string) => { const ratings = (cellar.reviews ?? []).filter(r => r.wineId === wineId && r.rating !== null).map(r => r.rating as number); return ratings.length ? `${(ratings.reduce((a, b) => a + b, 0) / ratings.length).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5 · ${ratings.length} ${ratings.length === 1 ? "avaliação" : "avaliações"}` : "Ainda sem notas"; };
   const displayedWines = cellar.wines
-    .filter((wine) => (wineCounts.get(wine.id) ?? 0) > 0 && matchesSearch(wine, search))
+    .filter((wine) => matchesSearch(wine, search))
     .sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
 
   if (dataMode === "checking" || (dataMode === "local" && !hydrated)) return <ConnectionStateScreen title="Abrindo sua adega" message="Estamos carregando suas prateleiras." />;
@@ -441,12 +547,13 @@ export default function Home() {
 
         <div className="sidebar-label">SUA COLEÇÃO</div>
         <nav className="main-nav" aria-label="Navegação principal">
-          <button className={view === "map" ? "nav-item active" : "nav-item"} onClick={() => setView("map")}>
+          <button aria-label="Mapa da adega" className={view === "map" ? "nav-item active" : "nav-item"} onClick={() => setView("map")}>
             <LayoutDashboard size={18} /> <span>Mapa da adega</span>
           </button>
-          <button className={view === "wines" ? "nav-item active" : "nav-item"} onClick={() => setView("wines")}>
+          <button aria-label="Meus vinhos" className={view === "wines" ? "nav-item active" : "nav-item"} onClick={() => setView("wines")}>
             <Archive size={18} /> <span>Meus vinhos</span>
           </button>
+          <button aria-label="Histórico" className={view === "history" ? "nav-item active" : "nav-item"} onClick={() => setView("history")}><Archive size={18} /> <span>Histórico</span></button>
         </nav>
 
         <div className="sidebar-divider" />
@@ -477,7 +584,7 @@ export default function Home() {
 
       <main className="main-content" id="inicio">
         <header className="topbar">
-          <div className="breadcrumbs"><span>Minha adega</span><span className="breadcrumb-slash">/</span><strong>{view === "map" ? "Mapa" : "Vinhos"}</strong></div>
+          <div className="breadcrumbs"><span>Minha adega</span><span className="breadcrumb-slash">/</span><strong>{view === "map" ? "Mapa" : view === "history" ? "Histórico" : "Vinhos"}</strong></div>
           <div className="topbar-right">
             <span className="topbar-note"><span className="status-pulse" /> {dataMode === "remote" ? "Sincronizado com sua conta" : "Seus dados estão neste dispositivo"}</span>
             <button className="profile-button" aria-label={dataMode === "remote" ? `Sair da conta ${remoteEmail}` : "Perfil da demonstração local"} title={dataMode === "remote" ? "Sair da conta" : "Demonstração local"} onClick={() => { if (dataMode === "remote") void signOut(); }}>{dataMode === "remote" ? (remoteEmail[0]?.toLocaleUpperCase("pt-BR") ?? "V") : "N"}</button>
@@ -488,7 +595,7 @@ export default function Home() {
           <section className="page-heading">
             <div>
               <div className="eyebrow"><span className="eyebrow-line" /> SUA COLEÇÃO, BEM CUIDADA</div>
-              <h1>{view === "map" ? "A adega, do seu jeito." : "Seus vinhos."}</h1>
+              <h1>{view === "map" ? "A adega, do seu jeito." : view === "history" ? "Histórico da adega." : "Seus vinhos."}</h1>
               <p>{view === "map" ? "Cada garrafa no seu lugar. Cada história à mão." : "Um olhar claro sobre tudo o que você guardou."}</p>
             </div>
             <button className="primary-button" onClick={() => openBottleModal()}><Plus size={17} /> Registrar vinho</button>
@@ -521,7 +628,7 @@ export default function Home() {
             <div className="workspace-toolbar">
               <div className="section-title-wrap">
                 <div className="section-icon"><Grid2X2 size={18} /></div>
-                <div><h2>{view === "map" ? "Mapa de posições" : "Sua coleção de vinhos"}</h2><p>{view === "map" ? "Escolha uma prateleira para ver cada garrafa." : `${displayedWines.length} rótulos com garrafas cadastradas.`}</p></div>
+                <div><h2>{view === "map" ? "Mapa de posições" : view === "history" ? "Movimentações" : "Sua coleção de vinhos"}</h2><p>{view === "map" ? "Escolha uma prateleira para ver cada garrafa." : view === "history" ? "Movimentos e retiradas registrados." : `${displayedWines.length} rótulos cadastrados.`}</p></div>
               </div>
               <div className="toolbar-actions">
                 <label className="search-box">
@@ -608,7 +715,12 @@ export default function Home() {
                         {selectedWine.region && <div><span>Região</span><strong>{selectedWine.region}</strong></div>}
                         {selectedWine.grape && <div><span>Uva(s)</span><strong>{selectedWine.grape}</strong></div>}
                       </div>
-                      <div className="position-status"><span className="capacity-dot" /> Garrafa cadastrada manualmente</div>
+                      <div className="position-status">Média do vinho: {averageForWine(selectedWine.id)}</div>
+                      <div className="detail-actions">
+                        <button className="secondary-button" onClick={() => reviewBottle(selectedBottle)}>Avaliar garrafa</button>
+                        <button className="secondary-button" onClick={() => void moveBottle(selectedBottle)}>Mover</button>
+                        <button className="text-button" onClick={() => void removeBottle(selectedBottle)}>Retirar</button>
+                      </div>
                     </div>
                   ) : (
                     <div className="position-details vacant-details">
@@ -621,6 +733,17 @@ export default function Home() {
                   )}
                   <div className="panel-bottom"><div className="wine-rule" /><div><strong>Seu mapa, suas regras.</strong><p>{dataMode === "remote" ? "As alterações são salvas na sua conta." : "Os dados de exemplo podem ser substituídos pelos da sua coleção."}</p></div></div>
                 </aside>
+              </div>
+            ) : view === "history" ? (
+              <div className="history-list">
+                {(cellar.movements ?? []).filter(m => { const wine = wineById.get(m.wineId); return wine && matchesSearch(wine, search); }).map(m => {
+                  const wine = wineById.get(m.wineId);
+                  const position = (id: string | null, row: number | null, column: number | null) => id ? `${cellar.shelves.find(s => s.id === id)?.name ?? "Prateleira"} · L${row} / C${column}` : "—";
+                  const review = (cellar.reviews ?? []).find(r => r.bottleId === m.bottleId);
+                  const responsible = m.actorId ? (m.actorId === remoteUserId ? (remoteEmail || "Você") : "Outro responsável") : "Demonstração local";
+                  return <article className="history-item" key={m.id}><div><strong>{wine?.name ?? "Vinho"}</strong><small>{wine?.producer} · {new Date(m.createdAt).toLocaleString("pt-BR")}</small><p>{m.type === "remove" ? "Retirada" : m.type === "swap" ? "Troca" : "Movimentação"}: {position(m.fromShelfId, m.fromRow, m.fromColumn)}{m.type !== "remove" && <> → {position(m.toShelfId, m.toRow, m.toColumn)}</>}</p><p>Responsável: {responsible}</p>{m.reason && <p>Motivo: {m.reason}</p>}{review && <p>Avaliação: {review.rating ? `${review.rating} / 5` : "sem nota"}{review.comment && ` · ${review.comment}`}</p>}</div><button className="secondary-button" onClick={() => reviewBottle({ id: m.bottleId, wineId: m.wineId, shelfId: m.fromShelfId, row: m.fromRow, column: m.fromColumn })}>{review ? "Editar avaliação" : "Avaliar"}</button></article>;
+                })}
+                {!(cellar.movements ?? []).some(m => { const wine = wineById.get(m.wineId); return wine && matchesSearch(wine, search); }) && <div className="empty-list">Nenhuma movimentação encontrada.</div>}
               </div>
             ) : (
               <div className="wine-list-view">
@@ -637,7 +760,7 @@ export default function Home() {
                     <span className="wine-name-cell"><span className="wine-list-icon"><Wine size={17} /></span><span><strong>{wine.name}</strong><small>{wine.producer}</small></span></span>
                     <span className="wine-origin-cell">{wine.region || wine.country || "—"}</span>
                     <span className="wine-vintage-cell">{wine.vintage || "Sem safra"}</span>
-                    <span className="wine-count-cell">{wineCounts.get(wine.id) ?? 0} <small>garrafas</small></span>
+                    <span className="wine-count-cell">{wineCounts.get(wine.id) ?? 0} <small>garrafas · {averageForWine(wine.id)}</small></span>
                     <span className="wine-position-cell">{shelf ? <>{shelf.name}<small>L{firstBottle?.row} · C{firstBottle?.column}</small></> : "—"}<ArrowUpRight size={15} /></span>
                   </button>;
                 }) : <div className="empty-list"><Wine size={25} /><strong>Nenhum vinho encontrado</strong><span>Tente outra busca ou registre um novo rótulo.</span></div>}
@@ -650,8 +773,9 @@ export default function Home() {
         </div>
       </main>
 
-      {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
+      {showAddBottle && <AddBottleModal shelves={cellar.shelves} wines={cellar.wines} bottles={cellar.bottles} neonClient={neonClient} canIdentify={dataMode === "remote"} initialShelfId={activeShelf.id} initialPositionKey={preferredPositionKey} onClose={() => { setShowAddBottle(false); setPreferredPositionKey(null); }} onSave={addBottle} />}
       {showAddShelf && <AddShelfModal onClose={() => setShowAddShelf(false)} onSave={addShelf} />}
+      {reviewingBottle && <ReviewBottleModal bottleName={wineById.get(reviewingBottle.wineId)?.name ?? "Garrafa"} review={(cellar.reviews ?? []).find(item => item.bottleId === reviewingBottle.id)} onClose={() => setReviewingBottle(null)} onSave={(rating, comment) => saveReview(reviewingBottle, rating, comment)} />}
       {editingShelf && <AddShelfModal key={editingShelf.id} shelf={editingShelf} onClose={() => setEditingShelf(null)} onSave={(shelf) => updateShelf(editingShelf.id, shelf)} />}
       {toast && <div className="toast-message" role="status"><span><Check size={15} /></span>{toast}</div>}
     </div>
@@ -662,6 +786,8 @@ function AddBottleModal({
   shelves,
   wines,
   bottles,
+  neonClient,
+  canIdentify,
   initialShelfId,
   initialPositionKey,
   onClose,
@@ -670,17 +796,27 @@ function AddBottleModal({
   shelves: Shelf[];
   wines: WineRecord[];
   bottles: Bottle[];
+  neonClient: ReturnType<typeof createNeonBrowserClient> | null;
+  canIdentify: boolean;
   initialShelfId: string;
   initialPositionKey: string | null;
   onClose: () => void;
-  onSave: (draft: WineDraft, shelf: Shelf, positions: PositionDraft[]) => void | Promise<void>;
+  onSave: (draft: WineDraft, shelf: Shelf, positions: PositionDraft[], barcode?: { ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState<WineDraft>(blankWine);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogResults, setCatalogResults] = useState<WineCatalogCandidate[]>([]);
+  const [catalogMessage, setCatalogMessage] = useState("");
+  const [searchingCatalog, setSearchingCatalog] = useState(false);
+  const [loadingCandidateId, setLoadingCandidateId] = useState("");
+  const [selectedCandidateId, setSelectedCandidateId] = useState("");
   const [shelfId, setShelfId] = useState(initialShelfId);
   const [quantity, setQuantity] = useState(1);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(initialPositionKey ? [initialPositionKey] : []);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [barcodeAssociation, setBarcodeAssociation] = useState<{ ean13: string; sourceProvider: "user" | "open_food_facts" | "wineapi" | "web"; sourceUrl: string | null } | null>(null);
+  const [confirmBarcodeAssociation, setConfirmBarcodeAssociation] = useState(false);
   const shelf = shelves.find((item) => item.id === shelfId) ?? shelves[0];
   const reserved = useMemo(() => new Set(bottles.map((bottle) => positionKey(bottle.shelfId, bottle.row, bottle.column))), [bottles]);
   const duplicateMatch = wines.find((wine) => sameWine(wine, draft));
@@ -720,6 +856,82 @@ function AddBottleModal({
     setError("");
   }
 
+  async function searchWineCatalog() {
+    const query = catalogQuery.trim();
+    if (query.length < 2) {
+      setCatalogMessage("Digite pelo menos 2 caracteres para pesquisar.");
+      setCatalogResults([]);
+      return;
+    }
+
+    setSearchingCatalog(true);
+    setCatalogMessage("");
+    setCatalogResults([]);
+    setSelectedCandidateId("");
+    try {
+      const { data: authData, error: authError } = await neonClient?.auth.getSession() ?? { data: null, error: null };
+      const accessToken = authData?.session?.access_token;
+      if (authError || !accessToken) throw new Error("Entre na sua conta da adega para pesquisar vinhos.");
+      const response = await fetch(`/api/wineapi/search?q=${encodeURIComponent(query)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json() as { results?: WineCatalogCandidate[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Não foi possível pesquisar vinhos.");
+      setCatalogResults(data.results ?? []);
+      if (!data.results?.length) setCatalogMessage("Nenhum resultado. Você pode preencher a ficha manualmente abaixo.");
+    } catch (searchError) {
+      setCatalogMessage(searchError instanceof Error ? searchError.message : "Falha ao pesquisar na WineAPI.");
+    } finally {
+      setSearchingCatalog(false);
+    }
+  }
+
+  async function chooseCatalogCandidate(candidate: WineCatalogCandidate) {
+    setLoadingCandidateId(candidate.id);
+    setSelectedCandidateId(candidate.id);
+    setCatalogMessage("");
+    try {
+      const { data: authData, error: authError } = await neonClient?.auth.getSession() ?? { data: null, error: null };
+      const accessToken = authData?.session?.access_token;
+      if (authError || !accessToken) throw new Error("Entre na sua conta da adega para carregar a ficha.");
+      const response = await fetch(`/api/wineapi/wines/${encodeURIComponent(candidate.id)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = await response.json() as {
+        error?: string;
+        name?: string;
+        vintage?: string | number | null;
+        winery?: WineApiReference;
+        region?: WineApiReference;
+        country?: string | null;
+        grapes?: Array<string | { name?: string }> | null;
+      };
+      if (!response.ok) throw new Error(data.error ?? "Não foi possível carregar os dados desse vinho.");
+
+      const regionCountry = typeof data.region === "object" && data.region ? data.region.country : "";
+      const grapes = Array.isArray(data.grapes)
+        ? data.grapes.map((grape) => typeof grape === "string" ? grape : grape.name ?? "").filter(Boolean).join(", ")
+        : "";
+      setDraft({
+        ...blankWine,
+        name: data.name ?? candidate.name,
+        producer: catalogReferenceName(data.winery) || catalogReferenceName(candidate.winery),
+        vintage: data.vintage == null ? (candidate.vintage == null ? "" : String(candidate.vintage)) : String(data.vintage),
+        country: data.country ?? regionCountry ?? candidate.country ?? "",
+        region: catalogReferenceName(data.region) || catalogReferenceName(candidate.region),
+        grape: grapes,
+      });
+      setCatalogMessage(grapes
+        ? "Ficha preenchida. Revise os campos antes de adicionar as garrafas."
+        : "A WineAPI não informou a uva para este vinho. Revise os campos e preencha a uva manualmente, se souber.");
+      setSelectedKeys([]);
+    } catch (selectionError) {
+      setCatalogMessage(selectionError instanceof Error ? selectionError.message : "Falha ao carregar a ficha do vinho.");
+    } finally {
+      setLoadingCandidateId("");
+    }
+  }
+
   function isRuleField(field: "country" | "region" | "grape" | "vintage" | "customValue") {
     if (shelf?.organization !== "structured" || !shelf.rule) return false;
     return shelf.rule.criterion === (field === "customValue" ? "custom" : field);
@@ -749,7 +961,7 @@ function AddBottleModal({
     const selectedPositions = positions.filter((position) => visibleSelectedKeys.includes(position.key));
     setSaving(true);
     try {
-      await onSave(draft, shelf, selectedPositions);
+      await onSave(draft, shelf, selectedPositions, confirmBarcodeAssociation ? barcodeAssociation : null);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar as garrafas.");
     } finally {
@@ -760,8 +972,64 @@ function AddBottleModal({
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="modal-card add-bottle-modal" role="dialog" aria-modal="true" aria-labelledby="add-bottle-title">
-        <div className="modal-heading"><div><span className="modal-kicker">CADASTRO MANUAL</span><h2 id="add-bottle-title">Adicionar à adega</h2><p>Preencha o que souber e escolha onde guardar cada garrafa.</p></div><button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
+        <div className="modal-heading"><div><span className="modal-kicker">BUSCA NO CATÁLOGO</span><h2 id="add-bottle-title">Adicionar à adega</h2><p>Pesquise o vinho ou preencha a ficha manualmente.</p></div><button className="icon-button modal-close" onClick={onClose} aria-label="Fechar"><X size={18} /></button></div>
         <form onSubmit={submit}>
+          <BarcodeIdentification
+            client={neonClient}
+            canPersist={canIdentify}
+            onAssociationChange={(association) => {
+              setBarcodeAssociation(association);
+              setConfirmBarcodeAssociation(Boolean(association));
+            }}
+            onSelect={(candidate: IdentificationCandidate) => {
+              setDraft({
+                ...blankWine,
+                name: candidate.name,
+                producer: candidate.producer,
+                vintage: candidate.vintage,
+                country: candidate.country,
+                region: candidate.region,
+                grape: candidate.grape,
+              });
+              setSelectedCandidateId("");
+              setSelectedKeys([]);
+              setCatalogMessage("Ficha preenchida com um candidato. Revise e corrija cada campo; a safra continua sem confirmação automática.");
+            }}
+          />
+          {barcodeAssociation && <label className="barcode-association-confirm"><input type="checkbox" checked={confirmBarcodeAssociation} onChange={(event) => setConfirmBarcodeAssociation(event.target.checked)} /> Ao salvar, associar o EAN-13 {barcodeAssociation.ean13} a esta ficha revisada.</label>}
+          <section className="catalog-search" aria-label="Buscar vinho no catálogo">
+            <div className="catalog-search-row">
+              <label className="field"><span>Nome, produtor ou safra</span><input value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchWineCatalog(); } }} placeholder="Ex.: Quara Estate Malbec 2016" /></label>
+              <button type="button" className="secondary-button catalog-search-button" onClick={() => void searchWineCatalog()} disabled={searchingCatalog || loadingCandidateId !== ""}>
+                {searchingCatalog ? <LoaderCircle size={15} className="spin" /> : <Search size={15} />} Buscar
+              </button>
+            </div>
+            {catalogMessage && <p className="catalog-message" role="status">{catalogMessage}</p>}
+            {catalogResults.length > 0 && <>
+              <div className="catalog-results-heading" style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginTop: 2 }}><strong style={{ color: "#554b42", fontSize: 11, fontWeight: 650 }}>Resultados</strong><span style={{ color: "#9a9084", fontSize: 9 }}>{catalogResults.length} opções · selecione uma para carregar a ficha</span></div>
+              <div className="catalog-results" role="list" aria-label="Resultados da WineAPI" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))", gap: 9, maxHeight: 300, overflowY: "auto", padding: "1px 3px 3px 1px", alignContent: "start" }}>
+                {catalogResults.map((candidate) => {
+                  const location = [catalogReferenceName(candidate.region), candidate.country].filter(Boolean).join(" · ");
+                  const selected = selectedCandidateId === candidate.id;
+                  const tagStyle = { padding: "3px 6px", border: "1px solid #eee8df", borderRadius: 20, background: "#fbfaf7", color: "#84796d", fontSize: 8, lineHeight: 1.2 };
+                  return <button key={candidate.id} type="button" role="listitem" className={"catalog-result" + (selected ? " selected" : "")} onClick={() => void chooseCatalogCandidate(candidate)} disabled={loadingCandidateId !== ""} aria-label={"Selecionar " + candidate.name} style={{ display: "flex", width: "100%", minWidth: 0, minHeight: 92, boxSizing: "border-box", alignItems: "flex-start", justifyContent: "space-between", gap: 9, padding: 11, overflow: "hidden", border: selected ? "1px solid #9b7471" : "1px solid #e9e2d8", borderRadius: 9, background: selected ? "#faf4f0" : "#fffefa", textAlign: "left", cursor: "pointer" }}>
+                    <span className="catalog-result-main" style={{ display: "grid", flex: "1 1 auto", gap: 5, minWidth: 0 }}>
+                      <strong style={{ color: "#403832", fontSize: 11, fontWeight: 650, lineHeight: 1.4, overflowWrap: "anywhere" }}>{candidate.name}</strong>
+                      <span className="catalog-result-winery" style={{ display: "block", overflow: "hidden", color: "#897d70", fontSize: 9, lineHeight: 1.35, textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{catalogReferenceName(candidate.winery) || "Produtor não informado"}</span>
+                      <span className="catalog-result-tags" style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+                        <span style={tagStyle}>{candidate.vintage == null ? "Safra não informada" : "Safra " + candidate.vintage}</span>
+                        {location && <span style={tagStyle}>{location}</span>}
+                        {candidate.type && <span style={tagStyle}>{candidate.type}</span>}
+                      </span>
+                    </span>
+                    <span className="catalog-result-action" aria-hidden="true" style={{ display: "flex", flex: "0 0 auto", alignItems: "center", gap: 3, paddingTop: 2, color: "#8c6f58", fontSize: 8 }}>{loadingCandidateId === candidate.id ? <LoaderCircle size={16} className="spin" /> : selected ? <Check size={16} /> : <span>Ver ficha <ArrowDownRight size={14} /></span>}</span>
+                  </button>;
+                })}
+              </div>
+              <p className="catalog-results-note" style={{ margin: "-3px 0 0", color: "#9a9084", fontSize: 9, lineHeight: 1.45 }}>As uvas aparecem na ficha quando a WineAPI tem essa informação cadastrada.</p>
+            </>}
+          </section>
+          <div className="catalog-review-label">Ficha do vinho <span>Confira e complete antes de salvar</span></div>
           <div className="form-grid">
             <label className="field full"><span>Nome do vinho <i>*</i></span><input autoFocus value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} placeholder="Ex.: Malbec Reserva" required /></label>
             <label className="field full"><span>Produtor <i>*</i></span><input value={draft.producer} onChange={(event) => updateDraft("producer", event.target.value)} placeholder="Ex.: Bodega del Valle" required /></label>
@@ -859,6 +1127,63 @@ function AddShelfModal({ onClose, onSave, shelf }: { onClose: () => void; onSave
           </div>}
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={!name.trim() || saving}>{saving ? "Salvando…" : shelf ? <><Check size={16} /> Salvar alterações</> : <><Plus size={16} /> Criar prateleira</>}</button></div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function ReviewBottleModal({
+  bottleName,
+  review,
+  onClose,
+  onSave,
+}: {
+  bottleName: string;
+  review?: { rating: number | null; comment: string | null };
+  onClose: () => void;
+  onSave: (rating: number, comment: string) => Promise<void>;
+}) {
+  const [rating, setRating] = useState(review?.rating ?? 0);
+  const [comment, setComment] = useState(review?.comment ?? "");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (!rating) {
+      setError("Escolha uma nota de 1 a 5 estrelas.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave(rating, comment);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Não foi possível salvar a avaliação.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
+      <section className="modal-card review-modal" role="dialog" aria-modal="true" aria-labelledby="review-title">
+        <div className="modal-heading"><div><span className="modal-kicker">SUA DEGUSTAÇÃO</span><h2 id="review-title">Avaliar garrafa</h2><p>{bottleName}</p></div><button type="button" className="icon-button modal-close" onClick={onClose} aria-label="Fechar" disabled={saving}><X size={18} /></button></div>
+        <form onSubmit={submit}>
+          <fieldset className="review-rating">
+            <legend>Nota <i>*</i></legend>
+            <div className="review-stars" role="group" aria-label="Nota de 1 a 5 estrelas">
+              {Array.from({ length: 5 }, (_, index) => {
+                const value = index + 1;
+                return <button key={value} type="button" className={value <= rating ? "review-star selected" : "review-star"} aria-label={`${value} ${value === 1 ? "estrela" : "estrelas"}`} aria-pressed={rating === value} onClick={() => setRating(value)} disabled={saving}><Star size={25} fill={value <= rating ? "currentColor" : "none"} /></button>;
+              })}
+            </div>
+            <span className="review-rating-label" aria-live="polite">{rating ? `${rating} de 5 estrelas` : "Escolha uma nota"}</span>
+          </fieldset>
+          <label className="field full review-comment"><span>Comentário <small>opcional</small></span><textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} rows={4} placeholder="O que achou deste vinho?" disabled={saving} /></label>
+          {error && <p className="form-error" role="alert">{error}</p>}
+          <div className="modal-actions"><button type="button" className="text-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "Salvando…" : <><Check size={16} /> Salvar avaliação</>}</button></div>
         </form>
       </section>
     </div>
