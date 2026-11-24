@@ -7,20 +7,23 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 - [PRD](PRD.md): escopo, jornadas, regras de negócio, arquitetura e critérios do beta.
 - [Roadmap](ROADMAP.md): fases de entrega, ordem obrigatória e critérios de bloqueio.
 - [Testes de APIs](TESTES_APIS.md): notas de avaliação dos provedores externos.
+- [Proposta técnica](PROPOSTA_TECNICA.md): arquitetura para EAN/foto e gestão financeira, comparação de APIs e estimativas de custos.
 
 ## Plano de execução
 
-O trabalho começa pela **Fase 1 — Base do projeto e adega visual mínima**, com cadastro manual e sem depender de serviços externos. A prova de conceito de reconhecimento (Fase 0) está adiada; será retomada depois da base manual e antes de implementar o cadastro por foto.
+As Fases 1–2 estão integradas. A Fase 3 está implementada e validada no PR #9, ainda aguardando integração; veja as evidências e os testes pendentes em [TESTES_APIS.md](TESTES_APIS.md). O roadmap posiciona o gate de integração da Fase 3 antes da descoberta técnica, gestão financeira, reconhecimento por foto, compartilhamento familiar e hardening. Esta revisão atualiza o planejamento; não ativa integrações pagas nem altera produção.
 
-Ordem atual: adega visual e cadastro manual → prova de conceito de reconhecimento → cadastro por foto → histórico e preços → QR e família → hardening e expansão.
+O escopo de produto inclui preço pago, estimativa de mercado e reconhecimento por foto. O scanner EAN-13 continua sendo o caminho principal; dados sugeridos por EAN, busca web ou IA exigem revisão humana.
 
 ## Princípios do MVP
 
 - Uma adega por conta proprietária na interface inicial.
 - Cada garrafa ocupa uma posição física exclusiva.
 - Cadastro manual disponível mesmo quando integrações externas falham.
-- Identificação por foto sempre pode ser revisada; dados ausentes permanecem desconhecidos.
-- Preços e estimativas mostram fonte, safra e incerteza com clareza.
+- Busca textual sugere candidatos; a pessoa revisa os dados antes de cadastrar.
+- Cada nova compra exige preço pago por garrafa na moeda original; todos os totais são apresentados em BRL, com conversão histórica ou equivalente manual identificado.
+- Cotações de mercado são atualizadas semanalmente ou manualmente e distinguem valores confirmados, estimados e desconhecidos; todos os totais são em BRL e preço pago/mercado têm controles de privacidade independentes.
+- Safra incerta nunca é inventada nem confirmada automaticamente.
 
 ## Desenvolvimento
 
