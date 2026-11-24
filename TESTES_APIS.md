@@ -148,3 +148,9 @@ Saídas em `resultados/` para comparação. Os comandos e caminhos são equivale
 - InVintory: https://invintory.com/api/
 - WineEngine: https://services.tineye.com/WineEngine
 - OpenAI: https://developers.openai.com/api/docs/guides/images-vision
+
+### Revalidação Neon — 24/11/2026
+
+Na branch descartável `codex-fase3-revalidacao-20261124` (`br-floral-star-bep9s9qu`, projeto `soft-mode-37622581`), a falha anteriormente atribuída à migration 0007 foi reproduzida: o histórico do SQL Editor havia truncado a consulta após `grant execute on function public.consume_photo_identification_quota`. O PostgreSQL retornou `ERROR: syntax error at end of input (SQLSTATE 42601)` nessa instrução incompleta. A transação foi revertida. O limite exibido pelo editor se refere ao armazenamento no histórico; reutilizar uma consulta recuperada do histórico pode executar SQL incompleto. Não houve evidência de defeito no arquivo 0007 ou de falta de privilégios.
+
+A consulta foi completada e executada com guardas de projeto, branch e ledger, em transação com registro da versão; 0008 e 0009 foram aplicadas em transações separadas. O ledger confirmou 0001–0009. No PostgreSQL Neon 18.7, conferimos as seis funções de identificação, EAN válido, RLS nas duas novas tabelas, uma policy de leitura, SELECT de barcode permitido e INSERT direto e leitura de quota negados a `authenticated`; também `rating NOT NULL`, constraint com `swap` e função de troca atualizada. O teste local anterior usava PostgreSQL 16 com Auth simulado. Esta verificação estrutural não substitui o E2E com Neon Auth e duas contas na branch atual. Não se alteraram migrations históricas nem permissões.
