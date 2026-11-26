@@ -16,15 +16,18 @@ import { WineList } from "@/components/WineList";
 import { useCellar } from "@/hooks/useCellar";
 import { positionKey, type Bottle, type CellarState, type Shelf } from "@/lib/cellar";
 import type { BarcodeAssociation, ShelfInput } from "@/lib/cellar-repository";
+import { filterOptions, findWines, type BottleLocation } from "@/lib/find";
 import { moveDestinationText, planMove } from "@/lib/move";
 import type { PositionDraft } from "@/lib/shelf";
-import { bottleCountsByWine, cellarStats, formatAverageRating, MAX_REMOVAL_REASON_LENGTH } from "@/lib/stats";
-import { matchesSearch, type WineDraft } from "@/lib/wine";
+import { cellarStats, formatAverageRating, MAX_REMOVAL_REASON_LENGTH } from "@/lib/stats";
+import type { WineDraft } from "@/lib/wine";
 
 export default function Home() {
   const [view, setView] = useState<View>("map");
   const [activeShelfId, setActiveShelfId] = useState("shelf-main");
   const [search, setSearch] = useState("");
+  const [countryFilter, setCountryFilter] = useState<string | null>(null);
+  const [grapeFilter, setGrapeFilter] = useState<string | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const [showAddBottle, setShowAddBottle] = useState(false);
   const [preferredPositionKey, setPreferredPositionKey] = useState<string | null>(null);
@@ -75,13 +78,11 @@ export default function Home() {
     return positions;
   }, [cellar.bottles]);
   const stats = cellarStats(cellar);
-  const bottleCounts = bottleCountsByWine(cellar.bottles);
   const selectedBottle = selectedPosition ? bottleByPosition.get(selectedPosition) : undefined;
   const selectedWine = selectedBottle ? wineById.get(selectedBottle.wineId) : undefined;
   const averageLabel = (wineId: string) => formatAverageRating(cellar.reviews ?? [], wineId);
-  const displayedWines = cellar.wines
-    .filter((wine) => matchesSearch(wine, search))
-    .sort((first, second) => first.name.localeCompare(second.name, "pt-BR"));
+  const displayedWines = findWines(cellar.wines, { query: search, country: countryFilter, grape: grapeFilter });
+  const filters = useMemo(() => filterOptions(cellar), [cellar]);
 
   async function addBottles(draft: WineDraft, shelf: Shelf, positions: PositionDraft[], barcode?: BarcodeAssociation | null) {
     await store.addBottles(draft, shelf, positions, barcode);
@@ -172,6 +173,16 @@ export default function Home() {
     setShowAddBottle(true);
   }
 
+  /** Abre o mapa na prateleira da garrafa, com a posição selecionada e rolada para a vista. */
+  function openLocation(location: BottleLocation) {
+    setActiveShelfId(location.shelf.id);
+    setSelectedPosition(location.key);
+    setView("map");
+    window.setTimeout(() => {
+      document.querySelector(`[data-position-key="${CSS.escape(location.key)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 0);
+  }
+
   function selectShelf(shelfId: string) {
     setActiveShelfId(shelfId);
     setSelectedPosition(null);
@@ -222,7 +233,7 @@ export default function Home() {
             <div className="workspace-toolbar">
               <div className="section-title-wrap">
                 <div className="section-icon"><Grid2X2 size={18} /></div>
-                <div><h2>{view === "map" ? "Mapa de posições" : view === "history" ? "Movimentações" : "Sua coleção de vinhos"}</h2><p>{view === "map" ? "Escolha uma prateleira para ver cada garrafa." : view === "history" ? "Movimentos e retiradas registrados." : `${displayedWines.length} rótulos cadastrados.`}</p></div>
+                <div><h2>{view === "map" ? "Mapa de posições" : view === "history" ? "Movimentações" : "Encontrar vinho"}</h2><p>{view === "map" ? "Escolha uma prateleira para ver cada garrafa." : view === "history" ? "Movimentos e retiradas registrados." : `${displayedWines.length} ${displayedWines.length === 1 ? "rótulo encontrado" : "rótulos encontrados"}. Toque em uma localização para ver no mapa.`}</p></div>
               </div>
               <div className="toolbar-actions">
                 <label className="search-box">
@@ -268,13 +279,14 @@ export default function Home() {
               <WineList
                 cellar={cellar}
                 wines={displayedWines}
-                bottleCounts={bottleCounts}
+                countryOptions={filters.countries}
+                grapeOptions={filters.grapes}
+                countryFilter={countryFilter}
+                grapeFilter={grapeFilter}
+                onCountryFilter={setCountryFilter}
+                onGrapeFilter={setGrapeFilter}
                 averageLabel={averageLabel}
-                onOpenBottle={(bottle) => {
-                  setActiveShelfId(bottle.shelfId);
-                  setSelectedPosition(positionKey(bottle.shelfId, bottle.row, bottle.column));
-                  setView("map");
-                }}
+                onOpenLocation={openLocation}
                 onAddWine={() => openBottleModal()}
               />
             )}

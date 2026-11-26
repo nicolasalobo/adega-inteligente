@@ -23,6 +23,7 @@
     "test:identification:live": "node scripts/test-identification-live.mjs",
     "test:identification:neon": "node scripts/test-identification-neon.mjs",
     "test:ui-identification-local": "node scripts/test-ui-identification-local.mjs",
+    "test:ui-find-local": "node scripts/test-ui-find-local.mjs",
     "test:migrations:local": "node scripts/test-migrations-local.mjs"
   },
   "dependencies": {

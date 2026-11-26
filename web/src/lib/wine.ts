@@ -36,13 +36,20 @@ export function findDuplicateWine(wines: Wine[], draft: WineDraft) {
   return wines.find((wine) => sameWine(wine, draft));
 }
 
-/** Busca textual simples em nome, produtor, safra, país, região e uva. Busca vazia aceita tudo. */
+/** Texto comparável na busca: sem acentos, sem espaços nas pontas e em minúsculas ("França " → "franca"). */
+export function normalizeForSearch(value: string) {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").trim().toLocaleLowerCase("pt-BR");
+}
+
+/**
+ * Busca em nome, produtor, safra, país, região e uva, sem diferenciar maiúsculas nem acentos
+ * ("Franca" encontra "França"). Busca vazia aceita tudo.
+ */
 export function matchesSearch(wine: Wine, query: string) {
-  if (!query.trim()) return true;
-  const searchable = [wine.name, wine.producer, wine.vintage, wine.country, wine.region, wine.grape]
-    .join(" ")
-    .toLocaleLowerCase("pt-BR");
-  return searchable.includes(query.trim().toLocaleLowerCase("pt-BR"));
+  const normalizedQuery = normalizeForSearch(query);
+  if (!normalizedQuery) return true;
+  const searchable = normalizeForSearch([wine.name, wine.producer, wine.vintage, wine.country, wine.region, wine.grape].join(" "));
+  return searchable.includes(normalizedQuery);
 }
 
 /** Limpa todos os campos de texto da ficha antes de salvar. */

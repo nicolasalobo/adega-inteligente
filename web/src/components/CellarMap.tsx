@@ -65,6 +65,7 @@ export function CellarMap({
                   const isSelected = selectedPosition === key;
                   return <button
                     key={key}
+                    data-position-key={key}
                     className={`shelf-cell ${bottle ? "occupied" : "empty"} ${isSelected ? "selected" : ""} ${search && !matches ? "dimmed" : ""}`}
                     aria-label={`${shelf.name}, linha ${row}, coluna ${column}${wine ? `, ${wine.name} de ${wine.producer}` : ", posição livre"}`}
                     title={wine ? `${wine.name} · ${wine.producer} · L${row} C${column}` : `Livre · L${row} C${column}`}
