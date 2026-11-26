@@ -8,6 +8,7 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 - [PRD](PRD.md): requisitos, regras de negócio e telas do MVP.
 - [Roadmap](ROADMAP.md): PRs do MVP, fases já concluídas e backlog pós-MVP.
 - [Entrevista de descoberta](docs/ENTREVISTA_DESCOBERTA.md): respostas do dono do produto, análise e decisões.
+- [Como trabalhamos](docs/PROCESSO.md): regras de PR, rotina, modelos de issue/PR e configuração do GitHub (proteção da `main`, labels, quadro).
 - [Testes de APIs](TESTES_APIS.md): avaliação dos provedores externos e evidências das fases 1–3.
 - [Proposta técnica](PROPOSTA_TECNICA.md): arquitetura de EAN/foto e financeiro, comparação de APIs e custos. Referência para o backlog pós-MVP.
 
