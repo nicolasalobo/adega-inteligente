@@ -85,3 +85,46 @@ export async function fetchCellarInventory(client: NeonBrowserClient, cellarId: 
   const reviews = (reviewResult.data ?? []).map(r => ({ bottleId: r.bottle_id as string, wineId: wineByBottle.get(r.bottle_id) ?? "", rating: r.rating as number | null, comment: r.comment as string | null }));
   return { shelves, wines, bottles, movements, reviews };
 }
+
+/**
+ * Garante que a conta tem uma adega e pelo menos uma prateleira.
+ * No primeiro acesso cria "Minha adega" com a prateleira livre "Adega principal" (5 × 10).
+ */
+export async function ensureRemoteCellar(client: NeonBrowserClient, ownerId: string) {
+  const cellarResult = await client.from("cellars").select("id,name").maybeSingle();
+  if (cellarResult.error) throw cellarResult.error;
+  let remoteCellar = cellarResult.data;
+
+  if (!remoteCellar) {
+    const createCellarResult = await client
+      .from("cellars")
+      .insert({ owner_id: ownerId, name: "Minha adega" })
+      .select("id,name")
+      .single();
+    if (createCellarResult.error) throw createCellarResult.error;
+    remoteCellar = createCellarResult.data;
+  }
+
+  const shelvesResult = await client.from("shelves").select("id").eq("cellar_id", remoteCellar.id).limit(1);
+  if (shelvesResult.error) throw shelvesResult.error;
+  if (!shelvesResult.data?.length) {
+    const createShelfResult = await client.from("shelves").insert({
+      cellar_id: remoteCellar.id,
+      name: "Adega principal",
+      row_count: 5,
+      column_count: 10,
+      organization: "free",
+    });
+    if (createShelfResult.error) throw createShelfResult.error;
+  }
+
+  return remoteCellar.id as string;
+}
+
+/** Token da sessão para chamar as rotas do próprio app (WineAPI, identificação). Lança `missingMessage` sem sessão. */
+export async function requireAccessToken(client: NeonBrowserClient | null, missingMessage: string) {
+  const { data, error } = await client?.auth.getSession() ?? { data: null, error: null };
+  const accessToken = data?.session?.access_token;
+  if (error || !accessToken) throw new Error(missingMessage);
+  return accessToken;
+}
