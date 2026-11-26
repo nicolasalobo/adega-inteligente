@@ -1,8 +1,12 @@
+import { features } from "@/lib/features";
 import { analyzeLabelPhoto, getIdentificationCapabilities, consumeIdentificationQuota } from "@/lib/identification/providers";
 import { isAllowedPhotoDataUrl } from "@/lib/identification/image-validation";
 import { getAuthenticatedNeonRequest } from "@/lib/neon/server-auth";
 
 export async function POST(request: Request) {
+  // Fora do MVP: escondida atrás da flag NEXT_PUBLIC_FEATURE_PHOTO_IDENTIFICATION (desligada por padrão).
+  if (!features.photoIdentification) return Response.json({ error: "Não encontrado." }, { status: 404 });
+
   const authenticated = await getAuthenticatedNeonRequest(request);
   if (!authenticated) return Response.json({ error: "Entre na sua conta para analisar um rótulo." }, { status: 401 });
 
