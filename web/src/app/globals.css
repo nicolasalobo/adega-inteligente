@@ -563,3 +563,32 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .scanner-open-button { justify-self:start; }
   .identification-panel { padding:10px; }
 }
+
+/* Encontrar vinho: filtros rápidos e localização de cada garrafa (docs/MVP.md 3.3.2) */
+.wine-filters { display: grid; gap: 8px; padding: 12px 0 10px; border-bottom: 1px solid #eeeae3; }
+.filter-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.filter-row-label { flex: 0 0 34px; color: #a19a91; font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.filter-chips { display: flex; gap: 6px; min-width: 0; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
+.filter-chip { display: inline-flex; min-height: 32px; flex: 0 0 auto; align-items: center; gap: 5px; padding: 0 12px; border: 1px solid #e6dfd5; border-radius: 999px; background: #fffefa; color: #6c635a; cursor: pointer; font-size: 10px; white-space: nowrap; }
+.filter-chip small { color: #a79d91; font-size: 9px; }
+.filter-chip:hover { border-color: #c9b9a6; }
+.filter-chip.active { border-color: #84515a; background: #84515a; color: #fff; }
+.filter-chip.active small { color: #ecd9dc; }
+.wine-list-row { cursor: default; }
+.wine-locations { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
+.location-chip { display: inline-flex; min-height: 30px; align-items: center; gap: 4px; padding: 0 9px; border: 1px solid #e8d9d7; border-radius: 7px; background: #f8f1f0; color: #814953; cursor: pointer; font-size: 9px; text-align: left; }
+.location-chip:hover { border-color: #ba9194; background: #f2e7e7; }
+.location-chip svg { flex: 0 0 auto; }
+.no-bottles { color: #a79d91; font-size: 9px; }
+.wine-list-row { padding: 8px 0; }
+
+@media (max-width: 580px) {
+  .wine-list-row { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name vintage count" "loc loc loc"; row-gap: 8px; padding: 10px 0; }
+  .wine-name-cell { grid-area: name; }
+  .wine-origin-cell { display: none; }
+  .wine-vintage-cell { grid-area: vintage; }
+  .wine-count-cell { grid-area: count; }
+  .wine-locations { grid-area: loc; }
+  .location-chip { min-height: 44px; padding: 0 12px; font-size: 11px; }
+  .filter-chip { min-height: 44px; font-size: 11px; }
+}
