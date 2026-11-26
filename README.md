@@ -4,26 +4,27 @@ Aplicativo para organizar uma adega pessoal, registrar cada garrafa em uma posi�
 
 ## Documentos
 
-- [PRD](PRD.md): escopo, jornadas, regras de negócio, arquitetura e critérios do beta.
-- [Roadmap](ROADMAP.md): fases de entrega, ordem obrigatória e critérios de bloqueio.
-- [Testes de APIs](TESTES_APIS.md): notas de avaliação dos provedores externos.
-- [Proposta técnica](PROPOSTA_TECNICA.md): arquitetura para EAN/foto e gestão financeira, comparação de APIs e estimativas de custos.
+- [MVP](docs/MVP.md): escopo do MVP, ordem dos PRs e definição de pronto. **Comece por aqui.** Prevalece sobre os demais documentos em caso de conflito.
+- [PRD](PRD.md): requisitos, regras de negócio e telas do MVP.
+- [Roadmap](ROADMAP.md): PRs do MVP, fases já concluídas e backlog pós-MVP.
+- [Entrevista de descoberta](docs/ENTREVISTA_DESCOBERTA.md): respostas do dono do produto, análise e decisões.
+- [Testes de APIs](TESTES_APIS.md): avaliação dos provedores externos e evidências das fases 1–3.
+- [Proposta técnica](PROPOSTA_TECNICA.md): arquitetura de EAN/foto e financeiro, comparação de APIs e custos. Referência para o backlog pós-MVP.
 
 ## Plano de execução
 
-As Fases 1–3 estão integradas em `main`. A Fase 3 foi validada antes do merge no Preview e na branch Neon descartável; o merge do PR #9 não publicou em produção. As evidências históricas e os gates de produção estão em [TESTES_APIS.md](TESTES_APIS.md). A Fase 4 começa pela gestão manual do preço pago, sem APIs pagas; cotações automatizadas e reconhecimento por foto continuam planejados.
-
-O escopo de produto inclui preço pago, estimativa de mercado e reconhecimento por foto. O scanner EAN-13 continua sendo o caminho principal; dados sugeridos por EAN, busca web ou IA exigem revisão humana.
+As Fases 1–3 (adega visual, cadastro com WineAPI/EAN, histórico e avaliações) estão integradas em `main`, mas ainda não foram testadas com garrafas reais. O trabalho atual é o MVP descrito em [docs/MVP.md](docs/MVP.md): consolidar, simplificar e completar esse núcleo para a adega real da cliente-piloto, organizada por colunas, uma por país. Financeiro, foto com IA, QR Code e convites ficaram no backlog pós-MVP do [roadmap](ROADMAP.md). A publicação em produção continua desativada.
 
 ## Princípios do MVP
 
-- Uma adega por conta proprietária na interface inicial.
-- Cada garrafa ocupa uma posição física exclusiva.
-- Cadastro manual disponível mesmo quando integrações externas falham.
-- Busca textual sugere candidatos; a pessoa revisa os dados antes de cadastrar.
-- Cada nova compra exige preço pago por garrafa na moeda original; todos os totais são apresentados em BRL, com conversão histórica ou equivalente manual identificado.
-- Cotações de mercado são atualizadas semanalmente ou manualmente e distinguem valores confirmados, estimados e desconhecidos; todos os totais são em BRL e preço pago/mercado têm controles de privacidade independentes.
-- Safra incerta nunca é inventada nem confirmada automaticamente.
+- Saber quais vinhos tenho e onde cada garrafa está (prateleira, linha, coluna).
+- Precisão no cadastro vale mais que rapidez; a pessoa sempre revisa a ficha antes de salvar.
+- Uma adega por conta; cada garrafa ocupa uma posição física exclusiva.
+- Prateleiras podem ter regra (ex.: cada coluna = um país), e o app recusa garrafas incompatíveis.
+- Cadastro manual sempre disponível, mesmo quando a WineAPI ou o EAN falham.
+- Dado incerto, como uma safra, fica desconhecido; nunca é preenchido automaticamente.
+- Orçamento R$ 0: nenhuma API paga habilitada.
+- Regras de negócio no banco ou em `web/src/lib/`, para poderem ser reaproveitadas num app nativo.
 
 ## Desenvolvimento
 
