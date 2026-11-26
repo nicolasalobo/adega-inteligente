@@ -161,6 +161,11 @@ try {
   assert.equal(afterRejectedSwap, "4|4|3", "rejected structured swap must leave positions and history unchanged");
 
   psql(`${authenticated}SELECT public.remove_bottle('${cellarOne}','${firstBottle}','consumida'); COMMIT;`);
+  const removedWithoutReview = psql(`
+    SELECT b.status, NOT EXISTS (SELECT 1 FROM public.bottle_reviews r WHERE r.bottle_id=b.id)
+    FROM public.bottles b WHERE b.id='${firstBottle}';
+  `).stdout.trim();
+  assert.equal(removedWithoutReview, "removed|t", "retirar uma garrafa não pode depender de avaliação (docs/MVP.md 3.3.6)");
   psql(`${authenticated}
     INSERT INTO public.bottles(cellar_id,wine_id,shelf_id,row_number,column_number)
     VALUES ('${cellarOne}','${wineOne}','${shelfOne}',1,2);

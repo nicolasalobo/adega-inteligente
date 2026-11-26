@@ -3,6 +3,7 @@
 import { Barcode, Camera, Check, LoaderCircle, Search, Sparkles } from "lucide-react";
 import { useState, type ChangeEvent } from "react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { features } from "@/lib/features";
 import { normalizeEan13 } from "@/lib/identification/ean13";
 import type { IdentificationCandidate, IdentificationResponse } from "@/lib/identification/contracts";
 import type { NeonBrowserClient } from "@/lib/neon/client";
@@ -134,8 +135,8 @@ export function BarcodeIdentification({
   }
 
   return (
-    <section className="identification-panel" aria-label="Identificação por código de barras ou foto">
-      <div className="identification-heading"><Barcode size={16} /><div><strong>Identificar pelo código ou rótulo</strong><small>Catálogos fornecem candidatos; a revisão é sempre sua.</small></div></div>
+    <section className="identification-panel" aria-label={features.photoIdentification ? "Identificação por código de barras ou foto" : "Identificação por código de barras"}>
+      <div className="identification-heading"><Barcode size={16} /><div><strong>{features.photoIdentification ? "Identificar pelo código ou rótulo" : "Identificar pelo código de barras"}</strong><small>Catálogos fornecem candidatos; a revisão é sempre sua.</small></div></div>
       {!canPersist && <p className="identification-note">Entre na sua conta Neon para consultar catálogos e associar um EAN. O cadastro manual continua disponível.</p>}
       <div className="ean-entry-row">
         <label className="field"><span>EAN-13</span><input inputMode="numeric" autoComplete="off" maxLength={17} value={input} onChange={(event) => { setInput(event.target.value); setResult(null); setMessage(""); onAssociationChange(null); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void lookupBarcode(); } }} placeholder="Ex.: 7892500022445" aria-invalid={invalid} /></label>
@@ -171,7 +172,7 @@ export function BarcodeIdentification({
         {result.warnings.map((warning, index) => <p className="identification-warning" key={`${index}:${warning}`}>{warning}</p>)}
         {result.sources.length > 0 && <small className="identification-attribution">As informações externas podem estar incorretas ou incompletas. Confira a fonte antes de salvar.</small>}
       </div>}
-      <details className="photo-identification">
+      {features.photoIdentification && <details className="photo-identification">
         <summary><Camera size={14} /> Alternativa: ler uma foto do rótulo</summary>
         <p>A fotografia só será enviada à OpenAI depois de selecionar o arquivo e confirmar abaixo. A análise não cadastra dados sozinha.</p>
         <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={onPhotoChange} disabled={!canPersist || loading} aria-label="Selecionar foto do rótulo" />
@@ -179,7 +180,7 @@ export function BarcodeIdentification({
         <button type="button" className="secondary-button" disabled={!canPersist || loading || !photoFile || !allowPhotoAi} onClick={() => void analyzePhoto()}>
           {loading ? <LoaderCircle size={14} className="spin" /> : <Sparkles size={14} />} Analisar fotografia
         </button>
-      </details>
+      </details>}
       {scannerOpen && <BarcodeScanner onCancel={() => setScannerOpen(false)} onDetected={(ean13) => { setInput(ean13); setScannerOpen(false); setMessage(canPersist ? "Código lido. Consulte as fontes para revisar o rótulo." : "Código lido. Entre na sua conta Neon para consultar fontes e associar o EAN."); }} />}
     </section>
   );
