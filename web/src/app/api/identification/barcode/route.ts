@@ -1,6 +1,7 @@
 import { normalizeEan13 } from "@/lib/identification/ean13";
 import { identifyBarcode } from "@/lib/identification/service";
-import { consumeIdentificationQuota, createIdentificationProviders, getIdentificationCapabilities } from "@/lib/identification/providers";
+import { canSeeOwnCellar, consumeIdentificationQuota, createIdentificationProviders, getIdentificationCapabilities } from "@/lib/identification/providers";
+import { checkIdentificationQuota, quotaDeniedMessage } from "@/lib/identification/quota";
 import { getAuthenticatedNeonRequest } from "@/lib/neon/server-auth";
 
 export async function POST(request: Request) {
@@ -14,8 +15,13 @@ export async function POST(request: Request) {
 
   const capabilities = getIdentificationCapabilities();
   try {
-    const allowed = await consumeIdentificationQuota(authenticated, "barcode");
-    if (!allowed) return Response.json({ error: "Limite de 30 identificações por hora atingido. Tente novamente mais tarde." }, { status: 429 });
+    const quota = await checkIdentificationQuota(
+      () => consumeIdentificationQuota(authenticated, "barcode"),
+      () => canSeeOwnCellar(authenticated),
+    );
+    if (quota !== "allowed") {
+      return Response.json({ error: quotaDeniedMessage(quota, "barcode") }, { status: quota === "limit_reached" ? 429 : 401 });
+    }
   } catch {
     return Response.json({ error: "Não foi possível validar o limite de consultas. Nenhuma busca externa foi iniciada." }, { status: 503 });
   }
