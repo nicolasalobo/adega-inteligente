@@ -1,5 +1,6 @@
-import { analyzeLabelPhoto, getIdentificationCapabilities, consumeIdentificationQuota } from "@/lib/identification/providers";
+import { analyzeLabelPhoto, getIdentificationCapabilities, canSeeOwnCellar, consumeIdentificationQuota } from "@/lib/identification/providers";
 import { isAllowedPhotoDataUrl } from "@/lib/identification/image-validation";
+import { checkIdentificationQuota, quotaDeniedMessage } from "@/lib/identification/quota";
 import { getAuthenticatedNeonRequest } from "@/lib/neon/server-auth";
 
 export async function POST(request: Request) {
@@ -17,8 +18,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const allowed = await consumeIdentificationQuota(authenticated, "photo");
-    if (!allowed) return Response.json({ error: "Limite de 5 análises de foto por hora atingido. Tente novamente mais tarde." }, { status: 429 });
+    const quota = await checkIdentificationQuota(
+      () => consumeIdentificationQuota(authenticated, "photo"),
+      () => canSeeOwnCellar(authenticated),
+    );
+    if (quota !== "allowed") {
+      return Response.json({ error: quotaDeniedMessage(quota, "photo") }, { status: quota === "limit_reached" ? 429 : 401 });
+    }
   } catch {
     return Response.json({ error: "Não foi possível validar o limite de análises. Nenhuma fotografia foi enviada à IA." }, { status: 503 });
   }

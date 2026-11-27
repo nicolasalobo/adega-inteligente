@@ -35,6 +35,12 @@ export async function consumeIdentificationQuota(
   return data === true;
 }
 
+/** A conta logada enxerga a própria adega? Se não, o banco não reconheceu o login (RLS filtra tudo). */
+export async function canSeeOwnCellar(request: AuthenticatedNeonRequest) {
+  const { data, error } = await request.client.from("cellars").select("id").limit(1);
+  return !error && Array.isArray(data) && data.length > 0;
+}
+
 export async function findUserBarcodeAssociations(
   request: AuthenticatedNeonRequest,
   ean13: string,
